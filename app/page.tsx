@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import data from 'pitchers.json'; // We will create this JSON file from your CSV
+import data from '@/public/pitchers.json'; // We will create this JSON file from your CSV
 
 export default function Page() {
   const [search, setSearch] = useState('');
