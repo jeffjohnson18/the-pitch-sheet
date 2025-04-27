@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import data from '@/public/pitchers.json'; // your JSON file
+import data from '@/public/pitchers.json'; // your updated JSON file
 
 export default function Page() {
   const [search, setSearch] = useState('');
@@ -108,6 +108,9 @@ export default function Page() {
                           <th className="py-2 px-2">Velo</th>
                           <th className="py-2 px-2">Usage</th>
                           <th className="py-2 px-2">Zone%</th>
+                          <th className="py-2 px-2">Hz Break</th>
+                          <th className="py-2 px-2">Vert Break</th>
+                          <th className="py-2 px-2">Spin Rate</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -119,6 +122,9 @@ export default function Page() {
                             <td className="py-1 px-2">{item.velocity_range}</td>
                             <td className="py-1 px-2">{item.usage_rate}</td>
                             <td className="py-1 px-2">{item.zone_rate}</td>
+                            <td className="py-1 px-2">{item.avg_horz_break?.toFixed(1)}</td>
+                            <td className="py-1 px-2">{item.avg_induced_vert_break?.toFixed(1)}</td>
+                            <td className="py-1 px-2">{item.avg_spin_rate?.toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -135,6 +141,9 @@ export default function Page() {
                           <th className="py-2 px-2">Velo</th>
                           <th className="py-2 px-2">Usage</th>
                           <th className="py-2 px-2">Zone%</th>
+                          <th className="py-2 px-2">Hz Break</th>
+                          <th className="py-2 px-2">Vert Break</th>
+                          <th className="py-2 px-2">Spin Rate</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -146,6 +155,9 @@ export default function Page() {
                             <td className="py-1 px-2">{item.velocity_range}</td>
                             <td className="py-1 px-2">{item.usage_rate}</td>
                             <td className="py-1 px-2">{item.zone_rate}</td>
+                            <td className="py-1 px-2">{item.avg_horz_break?.toFixed(1)}</td>
+                            <td className="py-1 px-2">{item.avg_induced_vert_break?.toFixed(1)}</td>
+                            <td className="py-1 px-2">{item.avg_spin_rate?.toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
