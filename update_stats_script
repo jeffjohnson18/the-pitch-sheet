@@ -1,0 +1,113 @@
+import pandas as pd
+from pybaseball import statcast_pitcher
+import time
+from tqdm import tqdm
+
+# Settings for pandas
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', None)
+
+# Step 1: Load pitchers (first 5)
+pitchers = pd.read_csv('savant_data.csv')
+
+# Step 2: Prepare empty list
+all_pitchers_report = []
+
+# Step 3: Define report builder
+def build_report(data, stand_side):
+    side_data = data[data['stand'] == stand_side]
+    total_pitches = len(side_data)
+
+    if total_pitches == 0:
+        return pd.DataFrame()
+
+    report = (
+        side_data.groupby('pitch_type')
+        .agg(
+            velocity_min=('release_speed', 'min'),
+            velocity_max=('release_speed', 'max'),
+            pitch_count=('pitch_type', 'count'),
+            zone_in_count=('zone', lambda x: (x.isin([1,2,3,4,5,6,7,8,9])).sum()),
+            avg_spin_rate=('release_spin_rate', 'mean'),
+            avg_horz_break=('pfx_x', 'mean'),
+            avg_induced_vert_break=('pfx_z', 'mean')
+        )
+        .reset_index()
+    )
+
+    report['velocity_range'] = report['velocity_min'].round(1).astype(str) + '-' + report['velocity_max'].round(1).astype(str)
+    report['usage_rate'] = (report['pitch_count'] / total_pitches * 100).round(1).astype(str) + '%'
+    report['zone_rate'] = (report['zone_in_count'] / report['pitch_count'] * 100).round(1).astype(str) + '%'
+    report['avg_spin_rate'] = report['avg_spin_rate'].round(0)
+    report['avg_horz_break'] = (report['avg_horz_break'] * 12).round(1)  # convert feet to inches
+    report['avg_induced_vert_break'] = (report['avg_induced_vert_break'] * 12).round(1)  # convert feet to inches
+
+    report = report[['pitch_type', 'velocity_range', 'usage_rate', 'zone_rate', 'avg_spin_rate', 'avg_horz_break', 'avg_induced_vert_break']]
+
+    return report
+
+# Step 4: Loop through the 5 pitchers
+for idx, row in tqdm(pitchers.iterrows(), total=len(pitchers), desc="Processing pitchers"):
+    player_id = row['player_id']
+    name = row['player_name']
+
+    try:
+        print(f"Gathering Player Data for {name}")
+        data = statcast_pitcher('2025-03-30', '2025-04-22', player_id=player_id)
+
+        if data.empty:
+            print(f"No data for {name}, skipping.")
+            continue
+
+        # Keep needed columns
+        data = data[['pitch_type', 'release_speed', 'stand', 'zone', 'arm_angle', 'release_pos_x',
+                     'release_spin_rate', 'pfx_x', 'pfx_z']]
+
+        data = data.dropna(subset=['pitch_type', 'stand'])
+
+        avg_release_pos_x = data['release_pos_x'].mean()
+        if pd.isna(avg_release_pos_x):
+            throws = None
+        elif avg_release_pos_x <= 0:
+            throws = 'R'
+        else:
+            throws = 'L'
+
+        arm_angle = data['arm_angle'].dropna().iloc[0] if not data['arm_angle'].dropna().empty else None
+
+        rhh_report = build_report(data, 'R')
+        lhh_report = build_report(data, 'L')
+
+        if not rhh_report.empty:
+            rhh_report['stand_side'] = 'R'
+            rhh_report['player_name'] = name
+            rhh_report['arm_angle'] = arm_angle
+            rhh_report['throws'] = throws
+            all_pitchers_report.append(rhh_report)
+
+        if not lhh_report.empty:
+            lhh_report['stand_side'] = 'L'
+            lhh_report['player_name'] = name
+            lhh_report['arm_angle'] = arm_angle
+            lhh_report['throws'] = throws
+            all_pitchers_report.append(lhh_report)
+
+        time.sleep(1)
+
+    except Exception as e:
+        print(f"Failed for {name}: {e}")
+
+# Step 5: Combine and save
+if all_pitchers_report:
+    final_report = pd.concat(all_pitchers_report, ignore_index=True)
+    final_report = final_report[['player_name', 'stand_side', 'pitch_type', 'velocity_range', 'usage_rate', 'zone_rate',
+                                 'avg_spin_rate', 'avg_horz_break', 'avg_induced_vert_break', 'arm_angle', 'throws']]
+
+    final_report.to_csv('apr_25_pitcher_stand_reports.csv', index=False)
+    print("\n✅ All reports generated and saved to 'apr_25_pitcher_stand_reports.csv'.\n")
+    print(final_report)
+
+else:
+    print("\n⚠️ No pitcher data was retrieved. No file created.")
