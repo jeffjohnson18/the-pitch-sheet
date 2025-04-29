@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import data from '@/public/pitchers.json';
+import data from '@/public/newest_apr_28_reports.json';
 import pitcherIds from '@/public/pitcher_ids.json';
 import Image from 'next/image';
 
