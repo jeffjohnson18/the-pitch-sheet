@@ -9,6 +9,7 @@ import Image from 'next/image';
 export default function Page() {
   const [search, setSearch] = useState('');
   const [playerImages, setPlayerImages] = useState<{ [key: string]: string }>({});
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
   const pitchNameMap: { [key: string]: string } = {
     'FF': 'Four-Seam Fastball',
@@ -56,33 +57,43 @@ export default function Page() {
     };
   };
 
-  const filteredData = data.filter((item: { player_name: string }) =>
-    item.player_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const uniqueTeams = Array.from(
+    new Set(data.map((item) => item.team_name))
+  ).map((teamName) => {
+    const teamEntry = data.find((item) => item.team_name === teamName);
+    return {
+      name: teamName,
+      logo: teamEntry?.team_logo || '',
+    };
+  });
+
+  const filteredData = data.filter((item: { player_name: string; team_name: string }) => {
+    const matchesName = item.player_name.toLowerCase().includes(search.toLowerCase());
+    const matchesTeam = selectedTeams.length === 0 || selectedTeams.includes(item.team_name);
+    return matchesName && matchesTeam;
+  });
 
   const uniquePlayers = Array.from(new Set(filteredData.map((item) => item.player_name)));
 
   const getPlayerImage = (playerName: string) => {
-    // Match player_name to the pitcher_ids.json
     const playerEntry = pitcherIds.find(
       (p) => p.player_name.toLowerCase() === playerName.toLowerCase()
     );
-  
+
     if (playerEntry && playerEntry.player_id) {
       const id = playerEntry.player_id;
       return `https://img.mlbstatic.com/mlb-photos/image/upload/w_180,q_100/v1/people/${id}/headshot/67/current.jpg`;
     } else {
       console.warn(`No player ID found for ${playerName}`);
-      return '/default_player.png'; // fallback image
+      return '/default_player.png';
     }
   };
-
 
   useEffect(() => {
     const fetchImages = async () => {
       const images: { [key: string]: string } = {};
       for (const player of uniquePlayers) {
-        if (!playerImages[player]) { // don't re-fetch if already loaded
+        if (!playerImages[player]) {
           const img = await getPlayerImage(player);
           images[player] = img;
         }
@@ -92,7 +103,7 @@ export default function Page() {
     if (uniquePlayers.length > 0) {
       fetchImages();
     }
-  }, [search, uniquePlayers]);
+  }, [search, selectedTeams, uniquePlayers]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans">
@@ -101,6 +112,35 @@ export default function Page() {
           THE <span className="font-semibold text-blue-600">PITCH</span> SHEET
         </h1>
 
+        {/* Team Checkboxes */}
+        <div className="flex flex-wrap gap-3 mb-6 justify-center">
+          {uniqueTeams.map((team) => (
+            <label key={team.name} className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedTeams.includes(team.name)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedTeams((prev) => [...prev, team.name]);
+                  } else {
+                    setSelectedTeams((prev) => prev.filter((t) => t !== team.name));
+                  }
+                }}
+                className="accent-blue-600"
+              />
+              <div className="flex items-center space-x-1">
+                {team.logo && (
+                  <div className="relative w-6 h-6">
+                    <Image src={team.logo} alt={team.name} fill className="object-contain" unoptimized />
+                  </div>
+                )}
+                <span className="text-sm">{team.name}</span>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        {/* Search Bar */}
         <div className="mb-8 max-w-2xl mx-auto">
           <input
             type="text"
@@ -111,8 +151,8 @@ export default function Page() {
           />
         </div>
 
-        {uniquePlayers.length === 0 && search && (
-          <p className="text-center text-gray-500">No pitchers match your search</p>
+        {uniquePlayers.length === 0 && (search || selectedTeams.length > 0) && (
+          <p className="text-center text-gray-500">No pitchers match your search or team selection.</p>
         )}
 
         <div className="space-y-12">
