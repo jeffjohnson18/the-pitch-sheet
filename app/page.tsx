@@ -10,6 +10,7 @@ export default function Page() {
   const [search, setSearch] = useState('');
   const [playerImages, setPlayerImages] = useState<{ [key: string]: string }>({});
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [isTeamSearchVisible, setIsTeamSearchVisible] = useState(false);
 
   const pitchNameMap: { [key: string]: string } = {
     'FF': 'Four-Seam Fastball',
@@ -112,33 +113,45 @@ export default function Page() {
           THE <span className="font-semibold text-blue-600">PITCH</span> SHEET
         </h1>
 
-        {/* Team Dropdown */}
-        <div className="mb-6">
-          <label htmlFor="teamSelect" className="block text-lg font-medium text-gray-900">
-            Select Team(s)
-          </label>
-          <select
-            id="teamSelect"
-            multiple
-            className="w-full p-3 mt-2 rounded-lg border-0 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
-            value={selectedTeams}
-            onChange={(e) => {
-              const selectedOptions = Array.from(e.target.selectedOptions, (option) => option.value);
-              setSelectedTeams(selectedOptions);
-            }}
+        {/* Team Search Button */}
+        <div className="text-center mb-4">
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+            onClick={() => setIsTeamSearchVisible(!isTeamSearchVisible)}
           >
-            {uniqueTeams.map((team) => (
-              <option key={team.name} value={team.name} className="flex items-center space-x-2">
-                {team.logo && (
-                  <div className="w-6 h-6 mr-2 relative">
-                    <Image src={team.logo} alt={team.name} fill className="object-contain" unoptimized />
-                  </div>
-                )}
-                {team.name}
-              </option>
-            ))}
-          </select>
+            {isTeamSearchVisible ? 'Hide Teams' : 'Search Teams'}
+          </button>
         </div>
+
+        {/* Team Checkboxes (Only visible if search is expanded) */}
+        {isTeamSearchVisible && (
+          <div className="flex flex-wrap gap-3 mb-6 justify-center">
+            {uniqueTeams.map((team) => (
+              <label key={team.name} className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedTeams.includes(team.name)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedTeams((prev) => [...prev, team.name]);
+                    } else {
+                      setSelectedTeams((prev) => prev.filter((t) => t !== team.name));
+                    }
+                  }}
+                  className="accent-blue-600"
+                />
+                <div className="flex items-center space-x-1">
+                  {team.logo && (
+                    <div className="relative w-6 h-6">
+                      <Image src={team.logo} alt={team.name} fill className="object-contain" unoptimized />
+                    </div>
+                  )}
+                  <span className="text-sm">{team.name}</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="mb-8 max-w-2xl mx-auto">
