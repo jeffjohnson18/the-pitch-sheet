@@ -113,6 +113,19 @@ export default function Page() {
           THE <span className="font-semibold text-blue-600">PITCH</span> SHEET
         </h1>
 
+        
+
+        {/* Search Bar */}
+        <div className="mb-8 max-w-2xl mx-auto">
+          <input
+            type="text"
+            placeholder="Search for a pitcher..."
+            className="w-full p-3 rounded-lg border-0 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 placeholder-gray-400"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
         {/* Team Search Button */}
         <div className="text-center mb-4">
           <button
@@ -152,17 +165,6 @@ export default function Page() {
             ))}
           </div>
         )}
-
-        {/* Search Bar */}
-        <div className="mb-8 max-w-2xl mx-auto">
-          <input
-            type="text"
-            placeholder="Search for a pitcher..."
-            className="w-full p-3 rounded-lg border-0 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 placeholder-gray-400"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
 
         {uniquePlayers.length === 0 && (search || selectedTeams.length > 0) && (
           <p className="text-center text-gray-500">No pitchers match your search or team selection.</p>
