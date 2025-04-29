@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import data from '@/public/pitchers.json';
+import pitcherIds from '@/public/pitcher_ids.json';
+import Image from 'next/image';
 
 export default function Page() {
   const [search, setSearch] = useState('');
+  const [playerImages, setPlayerImages] = useState<{ [key: string]: string }>({});
 
   const pitchNameMap: { [key: string]: string } = {
     'FF': 'Four-Seam Fastball',
@@ -30,12 +33,6 @@ export default function Page() {
     return name;
   };
 
-  const filteredData = data.filter((item: { player_name: string }) =>
-    item.player_name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const uniquePlayers = Array.from(new Set(filteredData.map((item) => item.player_name)));
-
   const getThrowHand = (playerName: string) => {
     const playerEntries = filteredData.filter((item) => item.player_name === playerName);
     return playerEntries[0]?.throws || 'R';
@@ -51,11 +48,57 @@ export default function Page() {
     return angles.length > 0 ? (angles.reduce((a, b) => a + b, 0) / angles.length).toFixed(1) : '0.0';
   };
 
+  const getTeamInfo = (playerName: string) => {
+    const playerEntries = filteredData.filter((item) => item.player_name === playerName);
+    return {
+      teamName: playerEntries[0]?.team_name || 'Unknown Team',
+      teamLogo: playerEntries[0]?.team_logo || '',
+    };
+  };
+
+  const filteredData = data.filter((item: { player_name: string }) =>
+    item.player_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const uniquePlayers = Array.from(new Set(filteredData.map((item) => item.player_name)));
+
+  const getPlayerImage = (playerName: string) => {
+    // Match player_name to the pitcher_ids.json
+    const playerEntry = pitcherIds.find(
+      (p) => p.player_name.toLowerCase() === playerName.toLowerCase()
+    );
+  
+    if (playerEntry && playerEntry.player_id) {
+      const id = playerEntry.player_id;
+      return `https://img.mlbstatic.com/mlb-photos/image/upload/w_180,q_100/v1/people/${id}/headshot/67/current.jpg`;
+    } else {
+      console.warn(`No player ID found for ${playerName}`);
+      return '/default_player.png'; // fallback image
+    }
+  };
+
+
+  useEffect(() => {
+    const fetchImages = async () => {
+      const images: { [key: string]: string } = {};
+      for (const player of uniquePlayers) {
+        if (!playerImages[player]) { // don't re-fetch if already loaded
+          const img = await getPlayerImage(player);
+          images[player] = img;
+        }
+      }
+      setPlayerImages((prev) => ({ ...prev, ...images }));
+    };
+    if (uniquePlayers.length > 0) {
+      fetchImages();
+    }
+  }, [search, uniquePlayers]);
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl md:text-4xl font-light mb-6 text-center text-gray-900 tracking-tight">
-          MLB <span className="font-semibold text-blue-600">PITCHER</span> REPORT
+          THE <span className="font-semibold text-blue-600">PITCH</span> SHEET
         </h1>
 
         <div className="mb-8 max-w-2xl mx-auto">
@@ -79,17 +122,57 @@ export default function Page() {
             const vsLeft = playerData.filter((item) => item.stand_side === 'L');
             const throwHand = getThrowHand(player);
             const armAngle = getArmAngle(player);
+            const { teamName, teamLogo } = getTeamInfo(player);
 
             return (
               <div key={player} className="bg-white rounded-xl shadow-sm overflow-hidden">
                 {/* Player Header */}
                 <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white">
-                  <h2 className="text-xl md:text-2xl font-medium text-center">
-                    {formatPlayerName(player)} 
-                    <span className="ml-2 font-light opacity-90">
-                      ({throwHand}HP • {armAngle}° slot)
-                    </span>
-                  </h2>
+                  <div className="flex items-center justify-center space-x-4">
+                    {/* Player Image */}
+                    {playerImages[player] && (
+                      <div className="w-16 h-16 relative rounded-full overflow-hidden">
+                        <Image
+                          src={playerImages[player]}
+                          alt={formatPlayerName(player)}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center">
+                        {/* Team Logo */}
+                        {teamLogo && (
+                          <div className="mr-3 w-8 h-8 relative">
+                            <Image 
+                              src={teamLogo} 
+                              alt={teamName}
+                              fill
+                              className="object-contain"
+                              unoptimized
+                            />
+                          </div>
+                        )}
+                        {/* Player Name */}
+                        <h2 className="text-xl md:text-2xl font-medium text-center">
+                          {formatPlayerName(player)}
+                        </h2>
+                      </div>
+
+                      {/* Team and Player Details */}
+                      <div className="flex items-center mt-1">
+                        <span className="text-sm font-light opacity-90 mr-3">
+                          {teamName}
+                        </span>
+                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                          {throwHand}HP • {armAngle}° slot
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Pitch Tables */}
