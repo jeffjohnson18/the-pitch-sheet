@@ -2,15 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import data from '@/public/newest_apr_28_reports.json';
+import data from '@/public/newest_apr_29_reports.json';
 import pitcherIds from '@/public/pitcher_ids.json';
 import Image from 'next/image';
+
+interface HeatMapData {
+  [pitchType: string]: {
+    R: string;
+    L: string;
+  };
+}
 
 export default function Page() {
   const [search, setSearch] = useState('');
   const [playerImages, setPlayerImages] = useState<{ [key: string]: string }>({});
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [isTeamSearchVisible, setIsTeamSearchVisible] = useState(false);
+  const [heatMaps, setHeatMaps] = useState<{ [playerName: string]: HeatMapData }>({});
 
   const pitchNameMap: { [key: string]: string } = {
     'FF': 'Four-Seam Fastball',
@@ -90,17 +98,52 @@ export default function Page() {
     }
   };
 
+  const fetchHeatMaps = async (playerName: string) => {
+    try {
+      const safeName = playerName.replace(/ /g, '_').replace(/,/g, '');
+      // This assumes your heatmaps are in the public/heatmaps directory
+      // with naming format: {safeName}_{pitchType}_{standSide}.png
+      const playerData = filteredData.filter((item) => item.player_name === playerName);
+      const heatMaps: HeatMapData = {};
+
+      playerData.forEach((item) => {
+        const pitchType = item.pitch_type;
+        const standSide = item.stand_side;
+        const imagePath = `/heatmaps/${safeName}_${pitchType}_${standSide}.png`;
+
+        if (!heatMaps[pitchType]) {
+          heatMaps[pitchType] = { R: '', L: '' };
+        }
+        heatMaps[pitchType][standSide === 'R' ? 'R' : 'L'] = imagePath;
+      });
+
+      return heatMaps;
+    } catch (error) {
+      console.error('Error generating heatmap paths:', error);
+      return {};
+    }
+  };
+
   useEffect(() => {
     const fetchImages = async () => {
       const images: { [key: string]: string } = {};
+      const newHeatMaps: { [key: string]: HeatMapData } = {};
+
       for (const player of uniquePlayers) {
         if (!playerImages[player]) {
           const img = await getPlayerImage(player);
           images[player] = img;
         }
+        if (!heatMaps[player]) {
+          const maps = await fetchHeatMaps(player);
+          newHeatMaps[player] = maps;
+        }
       }
+
       setPlayerImages((prev) => ({ ...prev, ...images }));
+      setHeatMaps((prev) => ({ ...prev, ...newHeatMaps }));
     };
+
     if (uniquePlayers.length > 0) {
       fetchImages();
     }
@@ -112,8 +155,6 @@ export default function Page() {
         <h1 className="text-3xl md:text-4xl font-light mb-6 text-center text-gray-900 tracking-tight">
           THE <span className="font-semibold text-blue-600">PITCH</span> SHEET
         </h1>
-
-        
 
         {/* Search Bar */}
         <div className="mb-8 max-w-2xl mx-auto">
@@ -136,7 +177,7 @@ export default function Page() {
           </button>
         </div>
 
-        {/* Team Checkboxes (Only visible if search is expanded) */}
+        {/* Team Checkboxes */}
         {isTeamSearchVisible && (
           <div className="flex flex-wrap gap-3 mb-6 justify-center">
             {uniqueTeams.map((team) => (
@@ -178,6 +219,7 @@ export default function Page() {
             const throwHand = getThrowHand(player);
             const armAngle = getArmAngle(player);
             const { teamName, teamLogo } = getTeamInfo(player);
+            const playerHeatMaps = heatMaps[player] || {};
 
             return (
               <div key={player} className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -202,8 +244,8 @@ export default function Page() {
                         {/* Team Logo */}
                         {teamLogo && (
                           <div className="mr-3 w-8 h-8 relative">
-                            <Image 
-                              src={teamLogo} 
+                            <Image
+                              src={teamLogo}
                               alt={teamName}
                               fill
                               className="object-contain"
@@ -231,9 +273,9 @@ export default function Page() {
                 </div>
 
                 {/* Pitch Tables */}
-                <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
                   {/* Vs RHH Table */}
-                  <div className="flex-1 p-4">
+                  <div className="flex-1 p-4 max-h-[400px] overflow-y-auto">
                     <h3 className="text-md font-medium mb-3 text-blue-600 uppercase tracking-wider text-center">
                       vs Right Hitters
                     </h3>
@@ -282,7 +324,7 @@ export default function Page() {
                   </div>
 
                   {/* Vs LHH Table */}
-                  <div className="flex-1 p-4">
+                  <div className="flex-1 p-4 max-h-[400px] overflow-y-auto">
                     <h3 className="text-md font-medium mb-3 text-blue-600 uppercase tracking-wider text-center">
                       vs Left Hitters
                     </h3>
@@ -330,10 +372,74 @@ export default function Page() {
                     </div>
                   </div>
                 </div>
+
+                {/* Heatmaps Row at the Bottom */}
+                <div className="flex flex-col space-y-4 p-4">
+                  <h3 className="text-md font-medium text-blue-600 uppercase tracking-wider text-center">
+                    Zone Heatmaps
+                  </h3>
+                  <div className="overflow-x-auto flex justify-start space-x-6 pb-4">
+                    {vsRight.map((item, idx) => {
+                      const pitchType = item.pitch_type;
+                      const pitchHeatMaps = playerHeatMaps[pitchType] || { R: '', L: '' };
+
+                      return (
+                        <div key={idx} className="flex flex-col items-center min-w-max">
+                          <h4 className="text-sm font-medium mb-2">
+                            {pitchNameMap[pitchType] || pitchType}
+                          </h4>
+                          <div className="flex justify-center space-x-4">
+                            {/* RHH Heatmap */}
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500 mb-1">vs RHH</p>
+                              {pitchHeatMaps.R ? (
+                                <div className="w-32 h-40 relative">
+                                  <Image
+                                    src={pitchHeatMaps.R}
+                                    alt={`${pitchType} vs RHH heatmap`}
+                                    fill
+                                    className="object-contain"
+                                    unoptimized
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-32 h-40 bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+                                  No data
+                                </div>
+                              )}
+                            </div>
+
+                            {/* LHH Heatmap */}
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500 mb-1">vs LHH</p>
+                              {pitchHeatMaps.L ? (
+                                <div className="w-32 h-40 relative">
+                                  <Image
+                                    src={pitchHeatMaps.L}
+                                    alt={`${pitchType} vs LHH heatmap`}
+                                    fill
+                                    className="object-contain"
+                                    unoptimized
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-32 h-40 bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+                                  No data
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
               </div>
             );
           })}
         </div>
+
       </div>
     </div>
   );
