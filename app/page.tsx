@@ -13,12 +13,22 @@ interface HeatMapData {
   };
 }
 
+interface TeamInfo {
+  teamName: string;
+  teamLogo: string;
+}
+
+interface PlayerTeamData {
+  [playerName: string]: TeamInfo;
+}
+
 export default function Page() {
   const [search, setSearch] = useState('');
   const [playerImages, setPlayerImages] = useState<{ [key: string]: string }>({});
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [isTeamSearchVisible, setIsTeamSearchVisible] = useState(false);
   const [heatMaps, setHeatMaps] = useState<{ [playerName: string]: HeatMapData }>({});
+  const [playerTeams, setPlayerTeams] = useState<PlayerTeamData>({});
 
   const pitchNameMap: { [key: string]: string } = {
     'FF': 'Four-Seam Fastball',
@@ -58,12 +68,34 @@ export default function Page() {
     return angles.length > 0 ? (angles.reduce((a, b) => a + b, 0) / angles.length).toFixed(1) : '0.0';
   };
 
-  const getTeamInfo = (playerName: string) => {
-    const playerEntries = filteredData.filter((item) => item.player_name === playerName);
-    return {
-      teamName: playerEntries[0]?.team_name || 'Unknown Team',
-      teamLogo: playerEntries[0]?.team_logo || '',
-    };
+  const getTeamInfo = async (playerName: string): Promise<TeamInfo> => {
+    // Find player ID from pitcher_ids.json
+    const playerEntry = pitcherIds.find(
+      (p) => p.player_name.toLowerCase() === playerName.toLowerCase()
+    );
+
+    if (!playerEntry || !playerEntry.player_id) {
+      console.warn(`No player ID found for ${playerName}`);
+      return { teamName: 'Unknown Team', teamLogo: '' };
+    }
+
+    try {
+      const response = await fetch(`https://statsapi.mlb.com/api/v1/people/${playerEntry.player_id}?hydrate=currentTeam`);
+      const playerData = await response.json();
+      
+      const team = playerData.people[0]?.currentTeam;
+      if (!team) {
+        return { teamName: 'Unknown Team', teamLogo: '' };
+      }
+
+      return {
+        teamName: team.name,
+        teamLogo: `https://www.mlbstatic.com/team-logos/${team.id}.svg`
+      };
+    } catch (error) {
+      console.error('Error fetching team info:', error);
+      return { teamName: 'Unknown Team', teamLogo: '' };
+    }
   };
 
   const uniqueTeams = Array.from(
@@ -101,8 +133,6 @@ export default function Page() {
   const fetchHeatMaps = async (playerName: string) => {
     try {
       const safeName = playerName.replace(/ /g, '_').replace(/,/g, '');
-      // This assumes your heatmaps are in the public/heatmaps directory
-      // with naming format: {safeName}_{pitchType}_{standSide}.png
       const playerData = filteredData.filter((item) => item.player_name === playerName);
       const heatMaps: HeatMapData = {};
 
@@ -125,9 +155,10 @@ export default function Page() {
   };
 
   useEffect(() => {
-    const fetchImages = async () => {
+    const fetchImagesAndTeams = async () => {
       const images: { [key: string]: string } = {};
       const newHeatMaps: { [key: string]: HeatMapData } = {};
+      const newPlayerTeams: PlayerTeamData = {};
 
       for (const player of uniquePlayers) {
         if (!playerImages[player]) {
@@ -138,14 +169,19 @@ export default function Page() {
           const maps = await fetchHeatMaps(player);
           newHeatMaps[player] = maps;
         }
+        if (!playerTeams[player]) {
+          const teamInfo = await getTeamInfo(player);
+          newPlayerTeams[player] = teamInfo;
+        }
       }
 
       setPlayerImages((prev) => ({ ...prev, ...images }));
       setHeatMaps((prev) => ({ ...prev, ...newHeatMaps }));
+      setPlayerTeams((prev) => ({ ...prev, ...newPlayerTeams }));
     };
 
     if (uniquePlayers.length > 0) {
-      fetchImages();
+      fetchImagesAndTeams();
     }
   }, [search, selectedTeams, uniquePlayers]);
 
@@ -156,7 +192,6 @@ export default function Page() {
           THE <span className="font-semibold text-blue-600">PITCH</span> SHEET
         </h1>
 
-        {/* Search Bar */}
         <div className="mb-8 max-w-2xl mx-auto">
           <input
             type="text"
@@ -167,7 +202,6 @@ export default function Page() {
           />
         </div>
 
-        {/* Team Search Button */}
         <div className="text-center mb-4">
           <button
             className="px-4 py-2 bg-blue-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -177,7 +211,6 @@ export default function Page() {
           </button>
         </div>
 
-        {/* Team Checkboxes */}
         {isTeamSearchVisible && (
           <div className="flex flex-wrap gap-3 mb-6 justify-center">
             {uniqueTeams.map((team) => (
@@ -218,15 +251,13 @@ export default function Page() {
             const vsLeft = playerData.filter((item) => item.stand_side === 'L');
             const throwHand = getThrowHand(player);
             const armAngle = getArmAngle(player);
-            const { teamName, teamLogo } = getTeamInfo(player);
+            const teamInfo = playerTeams[player] || { teamName: 'Loading...', teamLogo: '' };
             const playerHeatMaps = heatMaps[player] || {};
 
             return (
               <div key={player} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                {/* Player Header */}
                 <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white">
                   <div className="flex items-center justify-center space-x-4">
-                    {/* Player Image */}
                     {playerImages[player] && (
                       <div className="w-16 h-16 relative rounded-full overflow-hidden">
                         <Image
@@ -241,28 +272,25 @@ export default function Page() {
 
                     <div className="flex flex-col items-center">
                       <div className="flex items-center">
-                        {/* Team Logo */}
-                        {teamLogo && (
+                        {teamInfo.teamLogo && (
                           <div className="mr-3 w-8 h-8 relative">
                             <Image
-                              src={teamLogo}
-                              alt={teamName}
+                              src={teamInfo.teamLogo}
+                              alt={teamInfo.teamName}
                               fill
                               className="object-contain"
                               unoptimized
                             />
                           </div>
                         )}
-                        {/* Player Name */}
                         <h2 className="text-xl md:text-2xl font-medium text-center">
                           {formatPlayerName(player)}
                         </h2>
                       </div>
 
-                      {/* Team and Player Details */}
                       <div className="flex items-center mt-1">
                         <span className="text-sm font-light opacity-90 mr-3">
-                          {teamName}
+                          {teamInfo.teamName}
                         </span>
                         <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
                           {throwHand}HP • {armAngle}° slot
@@ -272,9 +300,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Pitch Tables */}
                 <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
-                  {/* Vs RHH Table */}
                   <div className="flex-1 p-4 max-h-[400px] overflow-y-auto">
                     <h3 className="text-md font-medium mb-3 text-blue-600 uppercase tracking-wider text-center">
                       vs Right Hitters
@@ -323,7 +349,6 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* Vs LHH Table */}
                   <div className="flex-1 p-4 max-h-[400px] overflow-y-auto">
                     <h3 className="text-md font-medium mb-3 text-blue-600 uppercase tracking-wider text-center">
                       vs Left Hitters
@@ -373,7 +398,6 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Heatmaps Row at the Bottom */}
                 <div className="flex flex-col space-y-4 p-4">
                   <h3 className="text-md font-medium text-blue-600 uppercase tracking-wider text-center">
                     Zone Heatmaps
@@ -389,7 +413,6 @@ export default function Page() {
                             {pitchNameMap[pitchType] || pitchType}
                           </h4>
                           <div className="flex justify-center space-x-4">
-                            {/* RHH Heatmap */}
                             <div className="text-center">
                               <p className="text-xs text-gray-500 mb-1">vs RHH</p>
                               {pitchHeatMaps.R ? (
@@ -409,7 +432,6 @@ export default function Page() {
                               )}
                             </div>
 
-                            {/* LHH Heatmap */}
                             <div className="text-center">
                               <p className="text-xs text-gray-500 mb-1">vs LHH</p>
                               {pitchHeatMaps.L ? (
@@ -434,12 +456,10 @@ export default function Page() {
                     })}
                   </div>
                 </div>
-
               </div>
             );
           })}
         </div>
-
       </div>
     </div>
   );
