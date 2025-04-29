@@ -112,32 +112,32 @@ export default function Page() {
           THE <span className="font-semibold text-blue-600">PITCH</span> SHEET
         </h1>
 
-        {/* Team Checkboxes */}
-        <div className="flex flex-wrap gap-3 mb-6 justify-center">
-          {uniqueTeams.map((team) => (
-            <label key={team.name} className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectedTeams.includes(team.name)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedTeams((prev) => [...prev, team.name]);
-                  } else {
-                    setSelectedTeams((prev) => prev.filter((t) => t !== team.name));
-                  }
-                }}
-                className="accent-blue-600"
-              />
-              <div className="flex items-center space-x-1">
+        {/* Team Dropdown */}
+        <div className="mb-6">
+          <label htmlFor="teamSelect" className="block text-lg font-medium text-gray-900">
+            Select Team(s)
+          </label>
+          <select
+            id="teamSelect"
+            multiple
+            className="w-full p-3 mt-2 rounded-lg border-0 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+            value={selectedTeams}
+            onChange={(e) => {
+              const selectedOptions = Array.from(e.target.selectedOptions, (option) => option.value);
+              setSelectedTeams(selectedOptions);
+            }}
+          >
+            {uniqueTeams.map((team) => (
+              <option key={team.name} value={team.name} className="flex items-center space-x-2">
                 {team.logo && (
-                  <div className="relative w-6 h-6">
+                  <div className="w-6 h-6 mr-2 relative">
                     <Image src={team.logo} alt={team.name} fill className="object-contain" unoptimized />
                   </div>
                 )}
-                <span className="text-sm">{team.name}</span>
-              </div>
-            </label>
-          ))}
+                {team.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Search Bar */}
