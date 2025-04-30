@@ -233,7 +233,7 @@ export default function Page() {
                       <Image src={team.logo} alt={team.name} fill className="object-contain" unoptimized />
                     </div>
                   )}
-                  <span className="text-sm">{team.name}</span>
+                  <span className="text-sm text-black">{team.name}</span>
                 </div>
               </label>
             ))}
