@@ -409,7 +409,7 @@ export default function Page() {
 
                       return (
                         <div key={idx} className="flex flex-col items-center min-w-max">
-                          <h4 className="text-sm font-medium mb-2">
+                          <h4 className="text-sm font-medium mb-2 text-black">
                             {pitchNameMap[pitchType] || pitchType}
                           </h4>
                           <div className="flex justify-center space-x-4">
