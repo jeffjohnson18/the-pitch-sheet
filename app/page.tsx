@@ -40,7 +40,6 @@ const getArmAngle = (playerName: string) => {
   return angles.length ? (angles.reduce((a, b) => a + b) / angles.length).toFixed(1) : '0.0';
 };
 
-// Team filter UI
 const TeamFilterSection = ({
   teams, selectedTeams, setSelectedTeams
 }: {
@@ -100,6 +99,7 @@ export default function Page() {
   const [search, setSearch] = useState('');
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [showTeams, setShowTeams] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(50); // Initial visible player limit
 
   const pitchNameMap = useMemo(() => ({
     FF: 'Four-Seam Fastball', SL: 'Slider', CH: 'Changeup', CU: 'Curveball',
@@ -116,12 +116,19 @@ export default function Page() {
   const uniquePlayers = useMemo(() =>
     Array.from(new Set(filteredData.map(p => p.player_name))), [filteredData]);
 
+  const visiblePlayers = useMemo(() =>
+    uniquePlayers.slice(0, visibleCount), [uniquePlayers, visibleCount]);
+
   const uniqueTeams = useMemo(() =>
     Array.from(new Set(data.map(p => p.team_name)))
       .map(teamName => ({
         name: teamName,
         logo: data.find(p => p.team_name === teamName)?.team_logo || ''
       })), []);
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 50);
+  };
 
   return (
     <div className={`min-h-screen bg-gray-50 p-4 md:p-8 ${inter.className}`}>
@@ -159,24 +166,36 @@ export default function Page() {
           </div>
         )}
 
-        {uniquePlayers.length === 0 ? (
+        {visiblePlayers.length === 0 ? (
           <div className="text-center py-12 text-gray-500 text-lg">
             No pitchers found matching your criteria
           </div>
         ) : (
-          <div className="space-y-8">
-            {uniquePlayers.map(player => (
-              <PlayerCard
-                key={player}
-                player={player}
-                data={filteredData.filter(p => p.player_name === player)}
-                pitchNameMap={pitchNameMap}
-                formatPlayerName={formatPlayerName}
-                getThrowHand={getThrowHand}
-                getArmAngle={getArmAngle}
-              />
-            ))}
-          </div>
+          <>
+            <div className="space-y-8">
+              {visiblePlayers.map(player => (
+                <PlayerCard
+                  key={player}
+                  player={player}
+                  data={filteredData.filter(p => p.player_name === player)}
+                  pitchNameMap={pitchNameMap}
+                  formatPlayerName={formatPlayerName}
+                  getThrowHand={getThrowHand}
+                  getArmAngle={getArmAngle}
+                />
+              ))}
+            </div>
+            {visibleCount < uniquePlayers.length && (
+              <div className="text-center mt-10">
+                <button
+                  className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900"
+                  onClick={handleLoadMore}
+                >
+                  Load More Pitchers
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

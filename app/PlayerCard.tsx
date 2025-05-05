@@ -100,30 +100,27 @@ export default function PlayerCard({
             >
                 <div className="flex items-center justify-center">
                     {/* Player headshot */}
-                    {playerData?.image ? (
-  <Image
-    src={playerData.image}
-    alt={formatPlayerName(player)}
-    width={64}
-    height={64}
-    className="object-scale-down"
-    style={{
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      minWidth: '100%',
-      minHeight: '100%',
-      width: 'auto',
-      height: 'auto'
-    }}
-  />
-) : (
-  <div className="w-16 h-16 bg-gray-200 flex items-center justify-center">
-    No Image
-  </div>
-)}
-
+                    {playerData?.image && (
+                        <div className="w-16 h-16 relative rounded-full overflow-hidden mr-3"> {/* Added right margin */}
+                            <Image
+                                src={playerData.image}
+                                alt={formatPlayerName(player)}
+                                width={64}
+                                height={64}
+                                className="object-scale-down"
+                                style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    minWidth: '100%',
+                                    minHeight: '100%',
+                                    width: 'auto',
+                                    height: 'auto'
+                                }}
+                            />
+                        </div>
+                    )}
 
                     {/* Name and info */}
                     <div className="flex flex-col items-center">
