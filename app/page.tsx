@@ -5,6 +5,8 @@ import data from '@/public/pitchers-5-4-25.json';
 import pitcherIds from '@/public/pitcher_ids.json';
 import Image from 'next/image';
 import { Inter } from 'next/font/google';
+import { usePlayerData } from './usePlayerData';
+
 
 const inter = Inter({ subsets: ['latin'] });
 const PlayerCard = lazy(() => import('./PlayerCard'));
@@ -177,36 +179,6 @@ const fetchHeatMaps = async (playerName: string): Promise<HeatMapData> => {
   return heatMaps;
 };
 
-// Hook
-export const usePlayerData = (playerName: string) => {
-  const [playerData, setPlayerData] = useState<{
-    image: string;
-    teamInfo: TeamInfo;
-    heatMaps: HeatMapData;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [image, teamInfo, heatMaps] = await Promise.all([
-          cachedFetch(`image-${playerName}`, () => getPlayerImage(playerName)),
-          cachedFetch(`team-${playerName}`, () => getTeamInfo(playerName)),
-          cachedFetch(`heatmaps-${playerName}`, () => fetchHeatMaps(playerName))
-        ]);
-        setPlayerData({ image, teamInfo, heatMaps });
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [playerName]);
-
-  return { data: playerData, loading, error };
-};
 
 // Team Filter Component
 const TeamFilterSection = ({

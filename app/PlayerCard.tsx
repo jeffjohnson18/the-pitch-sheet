@@ -1,6 +1,6 @@
 'use client';
 
-import { usePlayerData } from './page';
+import { usePlayerData } from './usePlayerData';
 import Image from 'next/image';
 import { useInView } from 'react-intersection-observer';
 import { Inter } from 'next/font/google';
