@@ -1,136 +1,31 @@
 'use client';
 
-import { useEffect, useState, useMemo, Suspense, lazy } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import data from '@/public/pitchers-5-4-25.json';
 import pitcherIds from '@/public/pitcher_ids.json';
 import Image from 'next/image';
 import { Inter } from 'next/font/google';
-import { usePlayerData } from './usePlayerData';
-
 
 const inter = Inter({ subsets: ['latin'] });
-const PlayerCard = lazy(() => import('./PlayerCard'));
+const PlayerCard = dynamic(() => import('./PlayerCard'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center py-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  )
+});
 
-interface PitchData {
-  player_name: string;
-  team_name: string;
-  team_logo?: string;
-  pitch_type: string;
-  stand_side: 'R' | 'L';
-  throws: string;
-  arm_angle: number | string;
-  velocity_range: string;
-  usage_rate: string;
-  zone_rate: string;
-  avg_horz_break?: number;
-  avg_induced_vert_break?: number;
-  avg_spin_rate?: number;
-}
-
-interface PitcherId {
-  player_name: string;
-  player_id?: number;
-}
-
-interface HeatMapData {
-  [pitchType: string]: {
-    R: string;
-    L: string;
-  };
-}
-
-interface TeamInfo {
-  teamName: string;
-  teamLogo: string;
-}
-
-// Team divisions data
 const MLB_DIVISIONS: Record<string, string[]> = {
-  'AL West': [
-    'Houston Astros',
-    'Sugar Land Space Cowboys',
-    'Los Angeles Angels',
-    'Salt Lake Bees',
-    'Athletics',
-    'Las Vegas Aviators',
-    'Seattle Mariners',
-    'Tacoma Rainiers',
-    'Texas Rangers',
-    'Round Rock Express'
-  ],
-  'AL Central': [
-    'Chicago White Sox',
-    'Charlotte Knights',
-    'Cleveland Guardians',
-    'Columbus Clippers',
-    'Detroit Tigers',
-    'Toledo Mud Hens',
-    'Kansas City Royals',
-    'Omaha Storm Chasers',
-    'Minnesota Twins',
-    'St. Paul Saints'
-  ],
-  'AL East': [
-    'Baltimore Orioles',
-    'Norfolk Tides',
-    'Boston Red Sox',
-    'Worcester Red Sox',
-    'New York Yankees',
-    'Scranton/Wilkes-Barre RailRiders',
-    'Tampa Bay Rays',
-    'Durham Bulls',
-    'Toronto Blue Jays',
-    'Buffalo Bisons'
-  ],
-  'NL West': [
-    'Arizona Diamondbacks',
-    'Reno Aces',
-    'Colorado Rockies',
-    'Albuquerque Isotopes',
-    'Los Angeles Dodgers',
-    'Oklahoma City Dodgers',
-    'San Diego Padres',
-    'El Paso Chihuahuas',
-    'San Francisco Giants',
-    'Sacramento River Cats'
-  ],
-  'NL Central': [
-    'Chicago Cubs',
-    'Iowa Cubs',
-    'Cincinnati Reds',
-    'Louisville Bats',
-    'Milwaukee Brewers',
-    'Nashville Sounds',
-    'Pittsburgh Pirates',
-    'Indianapolis Indians',
-    'St. Louis Cardinals',
-    'Memphis Redbirds'
-  ],
-  'NL East': [
-    'Atlanta Braves',
-    'Gwinnett Stripers',
-    'Miami Marlins',
-    'Jacksonville Jumbo Shrimp',
-    'New York Mets',
-    'Syracuse Mets',
-    'Philadelphia Phillies',
-    'Lehigh Valley IronPigs',
-    'Washington Nationals',
-    'Rochester Red Wings'
-  ]
+  'AL West': ['Houston Astros', 'Sugar Land Space Cowboys', 'Los Angeles Angels', 'Salt Lake Bees', 'Athletics', 'Las Vegas Aviators', 'Seattle Mariners', 'Tacoma Rainiers', 'Texas Rangers', 'Round Rock Express'],
+  'AL Central': ['Chicago White Sox', 'Charlotte Knights', 'Cleveland Guardians', 'Columbus Clippers', 'Detroit Tigers', 'Toledo Mud Hens', 'Kansas City Royals', 'Omaha Storm Chasers', 'Minnesota Twins', 'St. Paul Saints'],
+  'AL East': ['Baltimore Orioles', 'Norfolk Tides', 'Boston Red Sox', 'Worcester Red Sox', 'New York Yankees', 'Scranton/Wilkes-Barre RailRiders', 'Tampa Bay Rays', 'Durham Bulls', 'Toronto Blue Jays', 'Buffalo Bisons'],
+  'NL West': ['Arizona Diamondbacks', 'Reno Aces', 'Colorado Rockies', 'Albuquerque Isotopes', 'Los Angeles Dodgers', 'Oklahoma City Dodgers', 'San Diego Padres', 'El Paso Chihuahuas', 'San Francisco Giants', 'Sacramento River Cats'],
+  'NL Central': ['Chicago Cubs', 'Iowa Cubs', 'Cincinnati Reds', 'Louisville Bats', 'Milwaukee Brewers', 'Nashville Sounds', 'Pittsburgh Pirates', 'Indianapolis Indians', 'St. Louis Cardinals', 'Memphis Redbirds'],
+  'NL East': ['Atlanta Braves', 'Gwinnett Stripers', 'Miami Marlins', 'Jacksonville Jumbo Shrimp', 'New York Mets', 'Syracuse Mets', 'Philadelphia Phillies', 'Lehigh Valley IronPigs', 'Washington Nationals', 'Rochester Red Wings']
 };
 
-
-// Cache helper
-const cache = new Map();
-const cachedFetch = async <T,>(key: string, fetcher: () => Promise<T>): Promise<T> => {
-  if (cache.has(key)) return cache.get(key);
-  const data = await fetcher();
-  cache.set(key, data);
-  return data;
-};
-
-// Helpers
 const formatPlayerName = (name: string) =>
   name.includes(',') ? name.split(',').map(p => p.trim()).reverse().join(' ') : name;
 
@@ -145,42 +40,7 @@ const getArmAngle = (playerName: string) => {
   return angles.length ? (angles.reduce((a, b) => a + b) / angles.length).toFixed(1) : '0.0';
 };
 
-const getPlayerImage = async (playerName: string): Promise<string> => {
-  const player = pitcherIds.find(p => p.player_name.toLowerCase() === playerName.toLowerCase());
-  return player?.player_id
-    ? `https://img.mlbstatic.com/mlb-photos/image/upload/w_180,q_100/v1/people/${player.player_id}/headshot/67/current.jpg`
-    : '/default_player.png';
-};
-
-const getTeamInfo = async (playerName: string): Promise<TeamInfo> => {
-  const player = pitcherIds.find(p => p.player_name.toLowerCase() === playerName.toLowerCase());
-  if (!player?.player_id) return { teamName: 'Unknown', teamLogo: '' };
-  try {
-    const res = await fetch(`https://statsapi.mlb.com/api/v1/people/${player.player_id}?hydrate=currentTeam`);
-    const json = await res.json();
-    const team = json.people[0]?.currentTeam;
-    return team
-      ? { teamName: team.name, teamLogo: `https://www.mlbstatic.com/team-logos/${team.id}.svg` }
-      : { teamName: 'Unknown', teamLogo: '' };
-  } catch {
-    return { teamName: 'Unknown', teamLogo: '' };
-  }
-};
-
-const fetchHeatMaps = async (playerName: string): Promise<HeatMapData> => {
-  const safeName = playerName.replace(/\s+/g, '_').replace(/,/g, '');
-  const playerData = data.filter(p => p.player_name === playerName);
-  const heatMaps: HeatMapData = {};
-  playerData.forEach(p => {
-    if (!heatMaps[p.pitch_type]) heatMaps[p.pitch_type] = { R: '', L: '' };
-    heatMaps[p.pitch_type][p.stand_side as 'R' | 'L'] = `/heatmaps/${safeName}_${p.pitch_type}_${p.stand_side}.png`;
-
-  });
-  return heatMaps;
-};
-
-
-// Team Filter Component
+// Team filter UI
 const TeamFilterSection = ({
   teams, selectedTeams, setSelectedTeams
 }: {
@@ -236,7 +96,6 @@ const TeamFilterSection = ({
   );
 };
 
-// Main Page
 export default function Page() {
   const [search, setSearch] = useState('');
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
@@ -306,23 +165,17 @@ export default function Page() {
           </div>
         ) : (
           <div className="space-y-8">
-            <Suspense fallback={
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
-            }>
-              {uniquePlayers.map(player => (
-                <PlayerCard
-                  key={player}
-                  player={player}
-                  data={filteredData.filter(p => p.player_name === player)}
-                  pitchNameMap={pitchNameMap}
-                  formatPlayerName={formatPlayerName}
-                  getThrowHand={getThrowHand}
-                  getArmAngle={getArmAngle}
-                />
-              ))}
-            </Suspense>
+            {uniquePlayers.map(player => (
+              <PlayerCard
+                key={player}
+                player={player}
+                data={filteredData.filter(p => p.player_name === player)}
+                pitchNameMap={pitchNameMap}
+                formatPlayerName={formatPlayerName}
+                getThrowHand={getThrowHand}
+                getArmAngle={getArmAngle}
+              />
+            ))}
           </div>
         )}
       </div>
