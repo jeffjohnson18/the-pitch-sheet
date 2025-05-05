@@ -184,10 +184,10 @@ export default function PlayerCard({
                         <table className="w-full">
                             <thead>
                                 <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
-                                    <th className="pb-2 border-b border-gray-100 font-medium w-1/4">PITCH</th>
-                                    <th className="pb-2 border-b border-gray-100 text-right font-medium w-1/4">VELO</th>
-                                    <th className="pb-2 border-b border-gray-100 text-right font-medium w-1/4">USAGE</th>
-                                    <th className="pb-2 border-b border-gray-100 text-right font-medium w-1/4">ZONE%</th>
+                                    <th className="pb-2 border-b border-gray-100 text-gray-800 font-medium w-1/4">PITCH</th>
+                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">VELO</th>
+                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">USAGE</th>
+                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">ZONE%</th>
                                 </tr>
                             </thead>
                             <tbody>
