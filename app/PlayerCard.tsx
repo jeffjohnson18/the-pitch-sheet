@@ -146,7 +146,7 @@ export default function PlayerCard({
             {/* Data tables with fixed sizing */}
             <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
                 <div className="p-4">
-                    <h3 className="font-medium text-blue-600 mb-3 tracking-wider">VS RIGHT</h3>
+                    <h3 className="font-medium text-blue-600 text-sm text-center mb-3 tracking-wider">VS RIGHT HANDED HITTERS</h3>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
@@ -172,7 +172,7 @@ export default function PlayerCard({
                 </div>
 
                 <div className="p-4">
-                    <h3 className="font-medium text-blue-600 mb-3 tracking-wider">VS LEFT</h3>
+                    <h3 className="font-medium text-sm text-blue-600 mb-3 text-center tracking-wider">VS LEFT HANDED HITTERS </h3>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
@@ -199,8 +199,8 @@ export default function PlayerCard({
             </div>
 
             {/* Heatmaps */}
-            <div className="p-4">
-                <h3 className="font-medium text-blue-600 mb-3 tracking-wider">HEATMAPS</h3>
+            <div className="p-4 justify-center">
+                <h3 className="font-medium text-sm text-center text-blue-600 mb-3 tracking-wider">LOCATION HEATMAPS</h3>
                 <div className="flex overflow-x-auto space-x-6 pb-2">
                     {vsRight.map((pitch, i) => (
                         <div key={i} className="flex flex-col items-center flex-shrink-0">
