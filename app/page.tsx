@@ -1,10 +1,34 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, Suspense, lazy } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import data from '@/public/newest_apr_29_reports.json';
+import data from '@/public/pitchers-5-4-25.json';
 import pitcherIds from '@/public/pitcher_ids.json';
 import Image from 'next/image';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'] });
+
+interface PitchData {
+  player_name: string;
+  team_name: string;
+  team_logo?: string;
+  pitch_type: string;
+  stand_side: 'R' | 'L';
+  throws: string;
+  arm_angle: number | string;
+  velocity_range: string;
+  usage_rate: string;
+  zone_rate: string;
+  avg_horz_break?: number;
+  avg_induced_vert_break?: number;
+  avg_spin_rate?: number;
+}
+
+interface PitcherId {
+  player_name: string;
+  player_id?: number;
+}
 
 interface HeatMapData {
   [pitchType: string]: {
@@ -18,448 +42,449 @@ interface TeamInfo {
   teamLogo: string;
 }
 
-interface PlayerTeamData {
-  [playerName: string]: TeamInfo;
-}
+// Team divisions data
+const MLB_DIVISIONS: Record<string, string[]> = {
+  'AL West': [
+    'Houston Astros',
+    'Sugar Land Space Cowboys',
+    'Los Angeles Angels',
+    'Salt Lake Bees',
+    'Athletics',
+    'Las Vegas Aviators',
+    'Seattle Mariners',
+    'Tacoma Rainiers',
+    'Texas Rangers',
+    'Round Rock Express'
+  ],
+  'AL Central': [
+    'Chicago White Sox',
+    'Charlotte Knights',
+    'Cleveland Guardians',
+    'Columbus Clippers',
+    'Detroit Tigers',
+    'Toledo Mud Hens',
+    'Kansas City Royals',
+    'Omaha Storm Chasers',
+    'Minnesota Twins',
+    'St. Paul Saints'
+  ],
+  'AL East': [
+    'Baltimore Orioles',
+    'Norfolk Tides',
+    'Boston Red Sox',
+    'Worcester Red Sox',
+    'New York Yankees',
+    'Scranton/Wilkes-Barre RailRiders',
+    'Tampa Bay Rays',
+    'Durham Bulls',
+    'Toronto Blue Jays',
+    'Buffalo Bisons'
+  ],
+  'NL West': [
+    'Arizona Diamondbacks',
+    'Reno Aces',
+    'Colorado Rockies',
+    'Albuquerque Isotopes',
+    'Los Angeles Dodgers',
+    'Oklahoma City Dodgers',
+    'San Diego Padres',
+    'El Paso Chihuahuas',
+    'San Francisco Giants',
+    'Sacramento River Cats'
+  ],
+  'NL Central': [
+    'Chicago Cubs',
+    'Iowa Cubs',
+    'Cincinnati Reds',
+    'Louisville Bats',
+    'Milwaukee Brewers',
+    'Nashville Sounds',
+    'Pittsburgh Pirates',
+    'Indianapolis Indians',
+    'St. Louis Cardinals',
+    'Memphis Redbirds'
+  ],
+  'NL East': [
+    'Atlanta Braves',
+    'Gwinnett Stripers',
+    'Miami Marlins',
+    'Jacksonville Jumbo Shrimp',
+    'New York Mets',
+    'Syracuse Mets',
+    'Philadelphia Phillies',
+    'Lehigh Valley IronPigs',
+    'Washington Nationals',
+    'Rochester Red Wings'
+  ],
+  'Non-MLB': [
+    'Detroit Wolverines',
+    'Leones de Yucatán',
+    'Leones del Escogido',
+    'ACL White Sox',
+    'Harrisburg Senators',
+    'Other Team 1',
+    'Other Team 2'
+  ]
+};
+
+
+
+// Simple cache implementation
+const cache = new Map();
+
+const cachedFetch = async <T,>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+  if (cache.has(key)) {
+    return cache.get(key);
+  }
+  const data = await fetcher();
+  cache.set(key, data);
+  return data;
+};
+
+const PlayerCard = lazy(() => import('./PlayerCard'));
+
+const formatPlayerName = (name: string) => {
+  return name.includes(',') 
+    ? name.split(',').map(part => part.trim()).reverse().join(' ')
+    : name;
+};
+
+const getThrowHand = (playerName: string) => {
+  const player = data.find((p: PitchData) => p.player_name === playerName);
+  return player?.throws || 'R';
+};
+
+const getArmAngle = (playerName: string) => {
+  const playerData = data.filter((p: PitchData) => p.player_name === playerName);
+  const angles = playerData
+    .map(p => typeof p.arm_angle === 'number' ? p.arm_angle : parseFloat(p.arm_angle))
+    .filter(v => !isNaN(v));
+  return angles.length ? (angles.reduce((a, b) => a + b) / angles.length).toFixed(1) : '0.0';
+};
+
+const getPlayerImage = async (playerName: string): Promise<string> => {
+  const player = pitcherIds.find((p: PitcherId) => 
+    p.player_name.toLowerCase() === playerName.toLowerCase()
+  );
+  return player?.player_id 
+    ? `https://img.mlbstatic.com/mlb-photos/image/upload/w_180,q_100/v1/people/${player.player_id}/headshot/67/current.jpg`
+    : '/default_player.png';
+};
+
+const getTeamInfo = async (playerName: string): Promise<TeamInfo> => {
+  const player = pitcherIds.find((p: PitcherId) => 
+    p.player_name.toLowerCase() === playerName.toLowerCase()
+  );
+
+  if (!player?.player_id) return { teamName: 'Unknown', teamLogo: '' };
+
+  try {
+    const res = await fetch(`https://statsapi.mlb.com/api/v1/people/${player.player_id}?hydrate=currentTeam`);
+    const json = await res.json();
+    const team = json.people[0]?.currentTeam;
+    return team 
+      ? { teamName: team.name, teamLogo: `https://www.mlbstatic.com/team-logos/${team.id}.svg` }
+      : { teamName: 'Unknown', teamLogo: '' };
+  } catch {
+    return { teamName: 'Unknown', teamLogo: '' };
+  }
+};
+
+const fetchHeatMaps = async (playerName: string): Promise<HeatMapData> => {
+  const safeName = playerName.replace(/\s+/g, '_').replace(/,/g, '');
+  const playerData = data.filter((p: PitchData) => p.player_name === playerName);
+  const heatMaps: HeatMapData = {};
+
+  playerData.forEach((p: PitchData) => {
+    if (!heatMaps[p.pitch_type]) {
+      heatMaps[p.pitch_type] = { R: '', L: '' };
+    }
+    heatMaps[p.pitch_type][p.stand_side] = `/heatmaps/${safeName}_${p.pitch_type}_${p.stand_side}.png`;
+  });
+
+  return heatMaps;
+};
+
+export const usePlayerData = (playerName: string) => {
+  const [playerData, setPlayerData] = useState<{
+    image: string;
+    teamInfo: TeamInfo;
+    heatMaps: HeatMapData;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [image, teamInfo, heatMaps] = await Promise.all([
+          cachedFetch(`image-${playerName}`, () => getPlayerImage(playerName)),
+          cachedFetch(`team-${playerName}`, () => getTeamInfo(playerName)),
+          cachedFetch(`heatmaps-${playerName}`, () => fetchHeatMaps(playerName))
+        ]);
+        setPlayerData({ image, teamInfo, heatMaps });
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [playerName]);
+
+  return { data: playerData, loading, error };
+};
+
+const TeamFilterSection = ({ teams, selectedTeams, setSelectedTeams }: {
+  teams: { name: string; logo: string }[];
+  selectedTeams: string[];
+  setSelectedTeams: (teams: string[]) => void;
+}) => {
+  // Define divisions with proper typing
+  const MLB_DIVISIONS: Record<string, string[]> = {
+    'AL West': [
+      'Houston Astros',
+      'Sugar Land Space Cowboys',
+      'Los Angeles Angels',
+      'Salt Lake Bees',
+      'Athletics',
+      'Las Vegas Aviators',
+      'Seattle Mariners',
+      'Tacoma Rainiers',
+      'Texas Rangers',
+      'Round Rock Express'
+    ],
+    'AL Central': [
+      'Chicago White Sox',
+      'Charlotte Knights',
+      'Cleveland Guardians',
+      'Columbus Clippers',
+      'Detroit Tigers',
+      'Toledo Mud Hens',
+      'Kansas City Royals',
+      'Omaha Storm Chasers',
+      'Minnesota Twins',
+      'St. Paul Saints', 
+      'ACL White Sox',
+    ],
+    'AL East': [
+      'Baltimore Orioles',
+      'Norfolk Tides',
+      'Boston Red Sox',
+      'Worcester Red Sox',
+      'New York Yankees',
+      'Scranton/Wilkes-Barre RailRiders',
+      'Tampa Bay Rays',
+      'Durham Bulls',
+      'Toronto Blue Jays',
+      'Buffalo Bisons'
+    ],
+    'NL West': [
+      'Arizona Diamondbacks',
+      'Reno Aces',
+      'Colorado Rockies',
+      'Albuquerque Isotopes',
+      'Los Angeles Dodgers',
+      'Oklahoma City Dodgers',
+      'San Diego Padres',
+      'El Paso Chihuahuas',
+      'San Francisco Giants',
+      'Sacramento River Cats'
+    ],
+    'NL Central': [
+      'Chicago Cubs',
+      'Iowa Cubs',
+      'Cincinnati Reds',
+      'Louisville Bats',
+      'Milwaukee Brewers',
+      'Nashville Sounds',
+      'Pittsburgh Pirates',
+      'Indianapolis Indians',
+      'St. Louis Cardinals',
+      'Memphis Redbirds'
+    ],
+    'NL East': [
+      'Atlanta Braves',
+      'Gwinnett Stripers',
+      'Miami Marlins',
+      'Jacksonville Jumbo Shrimp',
+      'New York Mets',
+      'Syracuse Mets',
+      'Philadelphia Phillies',
+      'Lehigh Valley IronPigs',
+      'Washington Nationals',
+      'Rochester Red Wings',
+      'Harrisburg Senators',
+    ],
+  };
+  
+  
+
+  // Group teams by division with proper typing
+  const teamsByDivision: Record<string, { name: string; logo: string }[]> = {};
+
+  teams.forEach(team => {
+    let division = 'Non-MLB';
+    for (const [div, teamNames] of Object.entries(MLB_DIVISIONS)) {
+      if (teamNames.includes(team.name)) {
+        division = div;
+        break;
+      }
+    }
+    
+    if (!teamsByDivision[division]) {
+      teamsByDivision[division] = [];
+    }
+    teamsByDivision[division].push(team);
+  });
+
+  // Sort divisions alphabetically
+  const sortedDivisions = Object.entries(teamsByDivision)
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  return (
+    <div className="space-y-6">
+      {sortedDivisions.map(([division, divisionTeams]) => (
+        <div key={division}>
+          <h3 className="font-medium text-lg mb-2">{division}</h3>
+          <div className="flex flex-wrap gap-3">
+            {divisionTeams.map(team => (
+              <label key={team.name} className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+                <input
+                  type="checkbox"
+                  checked={selectedTeams.includes(team.name)}
+                  onChange={() => 
+                    setSelectedTeams(
+                      selectedTeams.includes(team.name)
+                        ? selectedTeams.filter(t => t !== team.name)
+                        : [...selectedTeams, team.name]
+                    )
+                  }
+                  className="rounded text-blue-600 focus:ring-blue-500"
+                />
+                {team.logo && (
+                  <Image 
+                    src={team.logo} 
+                    alt={team.name} 
+                    width={24} 
+                    height={24} 
+                    className="w-6 h-6 object-contain"
+                  />
+                )}
+                <span className="text-sm">{team.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export default function Page() {
   const [search, setSearch] = useState('');
-  const [playerImages, setPlayerImages] = useState<{ [key: string]: string }>({});
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
-  const [isTeamSearchVisible, setIsTeamSearchVisible] = useState(false);
-  const [heatMaps, setHeatMaps] = useState<{ [playerName: string]: HeatMapData }>({});
-  const [playerTeams, setPlayerTeams] = useState<PlayerTeamData>({});
+  const [showTeams, setShowTeams] = useState(false);
 
-  const pitchNameMap: { [key: string]: string } = {
-    'FF': 'Four-Seam Fastball',
-    'SL': 'Slider',
-    'CH': 'Changeup',
-    'CU': 'Curveball',
-    'SI': 'Sinker',
-    'FC': 'Cutter',
-    'KC': 'Knuckle Curve',
-    'FS': 'Splitter',
-    'KN': 'Knuckleball',
-    'EP': 'Eephus',
-    'SC': 'Screwball',
-    'ST': 'Sweeper',
-  };
+  const pitchNameMap = useMemo(() => ({
+    FF: 'Four-Seam Fastball',
+    SL: 'Slider',
+    CH: 'Changeup',
+    CU: 'Curveball',
+    SI: 'Sinker',
+    FC: 'Cutter',
+    KC: 'Knuckle Curve',
+    FS: 'Splitter',
+    KN: 'Knuckleball',
+    EP: 'Eephus',
+    SC: 'Screwball',
+    ST: 'Sweeper'
+  }), []);
 
-  const formatPlayerName = (name: string) => {
-    if (name.includes(',')) {
-      const [last, first] = name.split(',').map((part) => part.trim());
-      return `${first} ${last}`;
-    }
-    return name;
-  };
+  const filteredData = useMemo(() => 
+    data.filter((p: PitchData) => 
+      p.player_name.toLowerCase().includes(search.toLowerCase()) &&
+      (selectedTeams.length === 0 || selectedTeams.includes(p.team_name))
+    ), 
+    [search, selectedTeams]
+  );
 
-  const getThrowHand = (playerName: string) => {
-    const playerEntries = filteredData.filter((item) => item.player_name === playerName);
-    return playerEntries[0]?.throws || 'R';
-  };
+  const uniquePlayers = useMemo(() => 
+    Array.from(new Set(filteredData.map(p => p.player_name))), 
+    [filteredData]
+  );
 
-  const getArmAngle = (playerName: string) => {
-    const playerEntries = filteredData.filter((item) => item.player_name === playerName);
-    const angles = playerEntries
-      .map((item) =>
-        typeof item.arm_angle === 'number' ? item.arm_angle : parseFloat(item.arm_angle)
-      )
-      .filter((v) => !isNaN(v));
-    return angles.length > 0 ? (angles.reduce((a, b) => a + b, 0) / angles.length).toFixed(1) : '0.0';
-  };
-
-  const getTeamInfo = async (playerName: string): Promise<TeamInfo> => {
-    // Find player ID from pitcher_ids.json
-    const playerEntry = pitcherIds.find(
-      (p) => p.player_name.toLowerCase() === playerName.toLowerCase()
-    );
-
-    if (!playerEntry || !playerEntry.player_id) {
-      console.warn(`No player ID found for ${playerName}`);
-      return { teamName: 'Unknown Team', teamLogo: '' };
-    }
-
-    try {
-      const response = await fetch(`https://statsapi.mlb.com/api/v1/people/${playerEntry.player_id}?hydrate=currentTeam`);
-      const playerData = await response.json();
-      
-      const team = playerData.people[0]?.currentTeam;
-      if (!team) {
-        return { teamName: 'Unknown Team', teamLogo: '' };
-      }
-
-      return {
-        teamName: team.name,
-        teamLogo: `https://www.mlbstatic.com/team-logos/${team.id}.svg`
-      };
-    } catch (error) {
-      console.error('Error fetching team info:', error);
-      return { teamName: 'Unknown Team', teamLogo: '' };
-    }
-  };
-
-  const uniqueTeams = Array.from(
-    new Set(data.map((item) => item.team_name))
-  ).map((teamName) => {
-    const teamEntry = data.find((item) => item.team_name === teamName);
-    return {
-      name: teamName,
-      logo: teamEntry?.team_logo || '',
-    };
-  });
-
-  const filteredData = data.filter((item: { player_name: string; team_name: string }) => {
-    const matchesName = item.player_name.toLowerCase().includes(search.toLowerCase());
-    const matchesTeam = selectedTeams.length === 0 || selectedTeams.includes(item.team_name);
-    return matchesName && matchesTeam;
-  });
-
-  const uniquePlayers = Array.from(new Set(filteredData.map((item) => item.player_name)));
-
-  const getPlayerImage = (playerName: string) => {
-    const playerEntry = pitcherIds.find(
-      (p) => p.player_name.toLowerCase() === playerName.toLowerCase()
-    );
-
-    if (playerEntry && playerEntry.player_id) {
-      const id = playerEntry.player_id;
-      return `https://img.mlbstatic.com/mlb-photos/image/upload/w_180,q_100/v1/people/${id}/headshot/67/current.jpg`;
-    } else {
-      console.warn(`No player ID found for ${playerName}`);
-      return '/default_player.png';
-    }
-  };
-
-  const fetchHeatMaps = async (playerName: string) => {
-    try {
-      const safeName = playerName.replace(/ /g, '_').replace(/,/g, '');
-      const playerData = filteredData.filter((item) => item.player_name === playerName);
-      const heatMaps: HeatMapData = {};
-
-      playerData.forEach((item) => {
-        const pitchType = item.pitch_type;
-        const standSide = item.stand_side;
-        const imagePath = `/heatmaps/${safeName}_${pitchType}_${standSide}.png`;
-
-        if (!heatMaps[pitchType]) {
-          heatMaps[pitchType] = { R: '', L: '' };
-        }
-        heatMaps[pitchType][standSide === 'R' ? 'R' : 'L'] = imagePath;
-      });
-
-      return heatMaps;
-    } catch (error) {
-      console.error('Error generating heatmap paths:', error);
-      return {};
-    }
-  };
-
-  useEffect(() => {
-    const fetchImagesAndTeams = async () => {
-      const images: { [key: string]: string } = {};
-      const newHeatMaps: { [key: string]: HeatMapData } = {};
-      const newPlayerTeams: PlayerTeamData = {};
-
-      for (const player of uniquePlayers) {
-        if (!playerImages[player]) {
-          const img = await getPlayerImage(player);
-          images[player] = img;
-        }
-        if (!heatMaps[player]) {
-          const maps = await fetchHeatMaps(player);
-          newHeatMaps[player] = maps;
-        }
-        if (!playerTeams[player]) {
-          const teamInfo = await getTeamInfo(player);
-          newPlayerTeams[player] = teamInfo;
-        }
-      }
-
-      setPlayerImages((prev) => ({ ...prev, ...images }));
-      setHeatMaps((prev) => ({ ...prev, ...newHeatMaps }));
-      setPlayerTeams((prev) => ({ ...prev, ...newPlayerTeams }));
-    };
-
-    if (uniquePlayers.length > 0) {
-      fetchImagesAndTeams();
-    }
-  }, [search, selectedTeams, uniquePlayers]);
+  const uniqueTeams = useMemo(() => 
+    Array.from(new Set(data.map(p => p.team_name)))
+      .map(teamName => ({
+        name: teamName,
+        logo: data.find(p => p.team_name === teamName)?.team_logo || ''
+      })), 
+    []
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans">
+    <div className={`min-h-screen bg-gray-50 p-4 md:p-8 ${inter.className}`}>
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl md:text-4xl font-light mb-6 text-center text-gray-900 tracking-tight">
-          THE <span className="font-semibold text-blue-600">PITCH</span> SHEET
+        <h1 className="text-3xl md:text-4xl font-bold mb-6 text-center text-gray-800">
+          THE <span className="text-blue-600">PITCH</span> SHEET
         </h1>
 
         <div className="mb-8 max-w-2xl mx-auto">
           <input
             type="text"
             placeholder="Search for a pitcher..."
-            className="w-full p-3 rounded-lg border-0 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 placeholder-gray-400"
+            className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        <div className="text-center mb-4">
+        <div className="text-center mb-6">
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
-            onClick={() => setIsTeamSearchVisible(!isTeamSearchVisible)}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md"
+            onClick={() => setShowTeams(!showTeams)}
           >
-            {isTeamSearchVisible ? 'Hide Teams' : 'Search Teams'}
+            {showTeams ? 'Hide Team Filter' : 'Filter by Team'}
           </button>
         </div>
 
-        {isTeamSearchVisible && (
-          <div className="flex flex-wrap gap-3 mb-6 justify-center">
-            {uniqueTeams.map((team) => (
-              <label key={team.name} className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedTeams.includes(team.name)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedTeams((prev) => [...prev, team.name]);
-                    } else {
-                      setSelectedTeams((prev) => prev.filter((t) => t !== team.name));
-                    }
-                  }}
-                  className="accent-blue-600"
-                />
-                <div className="flex items-center space-x-1">
-                  {team.logo && (
-                    <div className="relative w-6 h-6">
-                      <Image src={team.logo} alt={team.name} fill className="object-contain" unoptimized />
-                    </div>
-                  )}
-                  <span className="text-sm text-black">{team.name}</span>
-                </div>
-              </label>
-            ))}
+        {showTeams && (
+          <div className="bg-white p-6 rounded-xl shadow-md mb-8">
+            <TeamFilterSection 
+              teams={uniqueTeams} 
+              selectedTeams={selectedTeams} 
+              setSelectedTeams={setSelectedTeams} 
+            />
           </div>
         )}
 
-        {uniquePlayers.length === 0 && (search || selectedTeams.length > 0) && (
-          <p className="text-center text-gray-500">No pitchers match your search or team selection.</p>
-        )}
-
-        <div className="space-y-12">
-          {uniquePlayers.map((player) => {
-            const playerData = filteredData.filter((item) => item.player_name === player);
-            const vsRight = playerData.filter((item) => item.stand_side === 'R');
-            const vsLeft = playerData.filter((item) => item.stand_side === 'L');
-            const throwHand = getThrowHand(player);
-            const armAngle = getArmAngle(player);
-            const teamInfo = playerTeams[player] || { teamName: 'Loading...', teamLogo: '' };
-            const playerHeatMaps = heatMaps[player] || {};
-
-            return (
-              <div key={player} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white">
-                  <div className="flex items-center justify-center space-x-4">
-                    {playerImages[player] && (
-                      <div className="w-16 h-16 relative rounded-full overflow-hidden">
-                        <Image
-                          src={playerImages[player]}
-                          alt={formatPlayerName(player)}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex flex-col items-center">
-                      <div className="flex items-center">
-                        {teamInfo.teamLogo && (
-                          <div className="mr-3 w-8 h-8 relative">
-                            <Image
-                              src={teamInfo.teamLogo}
-                              alt={teamInfo.teamName}
-                              fill
-                              className="object-contain"
-                              unoptimized
-                            />
-                          </div>
-                        )}
-                        <h2 className="text-xl md:text-2xl font-medium text-center">
-                          {formatPlayerName(player)}
-                        </h2>
-                      </div>
-
-                      <div className="flex items-center mt-1">
-                        <span className="text-sm font-light opacity-90 mr-3">
-                          {teamInfo.teamName}
-                        </span>
-                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                          {throwHand}HP • {armAngle}° slot
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
-                  <div className="flex-1 p-4 max-h-[400px] overflow-y-auto">
-                    <h3 className="text-md font-medium mb-3 text-blue-600 uppercase tracking-wider text-center">
-                      vs Right Hitters
-                    </h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                            <th className="pb-2 px-2 text-left">Pitch</th>
-                            <th className="pb-2 px-2 text-right">Velo</th>
-                            <th className="pb-2 px-2 text-right">Usage</th>
-                            <th className="pb-2 px-2 text-right">Zone%</th>
-                            <th className="pb-2 px-2 text-right">Hz Break</th>
-                            <th className="pb-2 px-2 text-right">Vert Break</th>
-                            <th className="pb-2 px-2 text-right">Spin</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {vsRight.map((item, idx) => (
-                            <tr key={idx} className="hover:bg-blue-50/50">
-                              <td className="py-3 px-2 text-sm font-medium text-gray-900">
-                                {pitchNameMap[item.pitch_type] || item.pitch_type}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.velocity_range}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.usage_rate}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.zone_rate}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.avg_horz_break?.toFixed(1)}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.avg_induced_vert_break?.toFixed(1)}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.avg_spin_rate?.toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 p-4 max-h-[400px] overflow-y-auto">
-                    <h3 className="text-md font-medium mb-3 text-blue-600 uppercase tracking-wider text-center">
-                      vs Left Hitters
-                    </h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                            <th className="pb-2 px-2 text-left">Pitch</th>
-                            <th className="pb-2 px-2 text-right">Velo</th>
-                            <th className="pb-2 px-2 text-right">Usage</th>
-                            <th className="pb-2 px-2 text-right">Zone%</th>
-                            <th className="pb-2 px-2 text-right">Hz Break</th>
-                            <th className="pb-2 px-2 text-right">Vert Break</th>
-                            <th className="pb-2 px-2 text-right">Spin</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {vsLeft.map((item, idx) => (
-                            <tr key={idx} className="hover:bg-blue-50/50">
-                              <td className="py-3 px-2 text-sm font-medium text-gray-900">
-                                {pitchNameMap[item.pitch_type] || item.pitch_type}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.velocity_range}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.usage_rate}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.zone_rate}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.avg_horz_break?.toFixed(1)}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.avg_induced_vert_break?.toFixed(1)}
-                              </td>
-                              <td className="py-3 px-2 text-sm text-right text-gray-900">
-                                {item.avg_spin_rate?.toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col space-y-4 p-4">
-                  <h3 className="text-md font-medium text-blue-600 uppercase tracking-wider text-center">
-                    Zone Heatmaps
-                  </h3>
-                  <div className="overflow-x-auto flex justify-start space-x-6 pb-4">
-                    {vsRight.map((item, idx) => {
-                      const pitchType = item.pitch_type;
-                      const pitchHeatMaps = playerHeatMaps[pitchType] || { R: '', L: '' };
-
-                      return (
-                        <div key={idx} className="flex flex-col items-center min-w-max">
-                          <h4 className="text-sm font-medium mb-2 text-black">
-                            {pitchNameMap[pitchType] || pitchType}
-                          </h4>
-                          <div className="flex justify-center space-x-4">
-                            <div className="text-center">
-                              <p className="text-xs text-gray-500 mb-1">vs RHH</p>
-                              {pitchHeatMaps.R ? (
-                                <div className="w-32 h-40 relative">
-                                  <Image
-                                    src={pitchHeatMaps.R}
-                                    alt={`${pitchType} vs RHH heatmap`}
-                                    fill
-                                    className="object-contain"
-                                    unoptimized
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-32 h-40 bg-gray-100 flex items-center justify-center text-xs text-gray-400">
-                                  No data
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="text-center">
-                              <p className="text-xs text-gray-500 mb-1">vs LHH</p>
-                              {pitchHeatMaps.L ? (
-                                <div className="w-32 h-40 relative">
-                                  <Image
-                                    src={pitchHeatMaps.L}
-                                    alt={`${pitchType} vs LHH heatmap`}
-                                    fill
-                                    className="object-contain"
-                                    unoptimized
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-32 h-40 bg-gray-100 flex items-center justify-center text-xs text-gray-400">
-                                  No data
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+        {uniquePlayers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">No pitchers found matching your criteria</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <Suspense fallback={
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
-            );
-          })}
-        </div>
+            }>
+              {uniquePlayers.map(player => (
+                <PlayerCard
+                  key={player}
+                  player={player}
+                  data={filteredData.filter(p => p.player_name === player)}
+                  pitchNameMap={pitchNameMap}
+                  formatPlayerName={formatPlayerName}
+                  getThrowHand={getThrowHand}
+                  getArmAngle={getArmAngle}
+                />
+              ))}
+            </Suspense>
+          </div>
+        )}
       </div>
     </div>
   );
