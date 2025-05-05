@@ -45,7 +45,7 @@ const TEAM_COLORS: { [key: string]: { primary: string; secondary: string } } = {
     'Minnesota Twins': { primary: '#002B5C', secondary: '#D31145' },
     'New York Mets': { primary: '#002D72', secondary: '#FF5910' },
     'New York Yankees': { primary: '#0C2340', secondary: '#C4CED4' },
-    'Oakland Athletics': { primary: '#003831', secondary: '#EFB21E' },
+    'Athletics': { primary: '#003831', secondary: '#EFB21E' },
     'Philadelphia Phillies': { primary: '#E81828', secondary: '#002D72' },
     'Pittsburgh Pirates': { primary: '#FDB827', secondary: '#27251F' },
     'San Diego Padres': { primary: '#2F241D', secondary: '#FFC425' },
