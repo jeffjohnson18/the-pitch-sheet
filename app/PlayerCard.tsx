@@ -19,11 +19,18 @@ interface PlayerCardProps {
 const HeatmapImage = ({ src, alt }: { src: string; alt: string }) => {
     const [ref, inView] = useInView({ triggerOnce: true });
     return (
-        <div ref={ref} className="w-32 h-40 relative">
-            {inView && <Image src={src} alt={alt} fill className="object-contain" />}
-        </div>
+      <div ref={ref} className="w-32 h-40 relative">
+        {inView && src ? (
+          <Image src={src} alt={alt} fill className="object-contain" />
+        ) : (
+          <div className="w-32 h-40 bg-gray-100 flex items-center justify-center">
+            No image available
+          </div>
+        )}
+      </div>
     );
-};
+  };
+  
 
 const TEAM_COLORS: { [key: string]: { primary: string; secondary: string } } = {
     'Arizona Diamondbacks': { primary: '#A71930', secondary: '#E3D4AD' },
@@ -93,27 +100,30 @@ export default function PlayerCard({
             >
                 <div className="flex items-center justify-center">
                     {/* Player headshot */}
-                    {playerData?.image && (
-                        <div className="w-16 h-16 relative rounded-full overflow-hidden mr-3"> {/* Added right margin */}
-                            <Image
-                                src={playerData.image}
-                                alt={formatPlayerName(player)}
-                                width={64}
-                                height={64}
-                                className="object-scale-down"
-                                style={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    minWidth: '100%',
-                                    minHeight: '100%',
-                                    width: 'auto',
-                                    height: 'auto'
-                                }}
-                            />
-                        </div>
-                    )}
+                    {playerData?.image ? (
+  <Image
+    src={playerData.image}
+    alt={formatPlayerName(player)}
+    width={64}
+    height={64}
+    className="object-scale-down"
+    style={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      minWidth: '100%',
+      minHeight: '100%',
+      width: 'auto',
+      height: 'auto'
+    }}
+  />
+) : (
+  <div className="w-16 h-16 bg-gray-200 flex items-center justify-center">
+    No Image
+  </div>
+)}
+
 
                     {/* Name and info */}
                     <div className="flex flex-col items-center">
