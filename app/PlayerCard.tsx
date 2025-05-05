@@ -151,19 +151,19 @@ export default function PlayerCard({
                         <table className="w-full">
                             <thead>
                                 <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
-                                    <th className="pb-2 border-b border-gray-100 font-medium w-1/4">PITCH</th>
-                                    <th className="pb-2 border-b border-gray-100 text-right font-medium w-1/4">VELO</th>
-                                    <th className="pb-2 border-b border-gray-100 text-right font-medium w-1/4">USAGE</th>
-                                    <th className="pb-2 border-b border-gray-100 text-right font-medium w-1/4">ZONE%</th>
+                                    <th className="pb-2 border-b border-gray-100 text-gray-800 font-medium w-1/4">PITCH</th>
+                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">VELO</th>
+                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">USAGE</th>
+                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">ZONE%</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {vsRight.map((pitch, i) => (
                                     <tr key={i} className="hover:bg-gray-50">
-                                        <td className="py-2 border-b border-gray-100 text-sm font-medium w-1/4">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
-                                        <td className="py-2 border-b border-gray-100 text-right text-sm font-medium w-1/4">{pitch.velocity_range}</td>
-                                        <td className="py-2 border-b border-gray-100 text-right text-sm font-medium w-1/4">{pitch.usage_rate}</td>
-                                        <td className="py-2 border-b border-gray-100 text-right text-sm font-medium w-1/4">{pitch.zone_rate}</td>
+                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-sm font-medium w-1/4">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
+                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.velocity_range}</td>
+                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.usage_rate}</td>
+                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.zone_rate}</td>
                                     </tr>
                                 ))}
                             </tbody>
