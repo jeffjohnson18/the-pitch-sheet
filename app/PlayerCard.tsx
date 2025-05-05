@@ -217,7 +217,7 @@ export default function PlayerCard({
                                         />
                                     ) : (
                                         <div className="w-32 h-40 bg-gray-100 flex items-center justify-center">
-                                            No data
+                                            No pitching data
                                         </div>
                                     )}
                                 </div>
