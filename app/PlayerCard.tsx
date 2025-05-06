@@ -19,17 +19,18 @@ interface PlayerCardProps {
 const HeatmapImage = ({ src, alt }: { src: string; alt: string }) => {
     const [ref, inView] = useInView({ triggerOnce: true });
     return (
-      <div ref={ref} className="w-32 h-40 relative">
-        {inView && src ? (
-          <Image src={src} alt={alt} fill className="object-contain" />
-        ) : (
-          <div className="w-32 h-40 bg-gray-100 flex items-center justify-center">
-            No image available
-          </div>
-        )}
-      </div>
+        <div ref={ref} className="w-32 h-40 relative">
+            {inView && src ? (
+                <Image src={src} alt={alt} fill className="object-contain" />
+            ) : (
+                <div className="w-32 h-40 bg-gray-100 flex items-center justify-center">
+                    No image available
+                </div>
+            )}
+        </div>
     );
-  };
+};
+
   
 
 const TEAM_COLORS: { [key: string]: { primary: string; secondary: string } } = {
@@ -66,6 +67,7 @@ const TEAM_COLORS: { [key: string]: { primary: string; secondary: string } } = {
     'Unknown Team': { primary: '#1E3A8A', secondary: '#3B82F6' }
 };
 
+
 export default function PlayerCard({
     player,
     data,
@@ -84,24 +86,50 @@ export default function PlayerCard({
     const vsLeft = data.filter(p => p.stand_side === 'L');
     const throwHand = getThrowHand(player);
     const armAngle = getArmAngle(player);
-
     const teamInfo = playerData?.teamInfo || { teamName: 'Unknown Team', teamLogo: '' };
     const teamColors = TEAM_COLORS[teamInfo.teamName] || TEAM_COLORS['Unknown Team'];
 
+    const renderTable = (pitches: any[], label: string) => (
+        <div className="p-4">
+            <h3 className="font-medium text-sm text-blue-600 mb-3 text-center tracking-wider">{label}</h3>
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead>
+                        <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 font-medium">Pitch</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Velo</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Usage</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Zone%</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Spin</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">H-Break</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">IVB</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pitches.map((pitch, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                                <td className="py-2 border-b border-gray-100 text-sm font-medium">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
+                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.velocity_range}</td>
+                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.usage_rate}</td>
+                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.zone_rate}</td>
+                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.avg_spin_rate}</td>
+                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.avg_horz_break}</td>
+                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.avg_induced_vert_break}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
     return (
         <div className={`bg-white rounded-xl shadow overflow-hidden ${inter.className}`}>
-            {/* Player header with team colors */}
-            {/* Player header with team colors */}
-            <div
-                className="p-4 text-white"
-                style={{
-                    background: `linear-gradient(135deg, ${teamColors.primary} 0%, ${teamColors.secondary} 100%)`
-                }}
-            >
+            {/* Header */}
+            <div className="p-4 text-white" style={{ background: `linear-gradient(135deg, ${teamColors.primary} 0%, ${teamColors.secondary} 100%)` }}>
                 <div className="flex items-center justify-center">
-                    {/* Player headshot */}
                     {playerData?.image && (
-                        <div className="w-16 h-16 relative rounded-full overflow-hidden mr-3"> {/* Added right margin */}
+                        <div className="w-16 h-16 relative rounded-full overflow-hidden mr-3">
                             <Image
                                 src={playerData.image}
                                 alt={formatPlayerName(player)}
@@ -121,12 +149,10 @@ export default function PlayerCard({
                             />
                         </div>
                     )}
-
-                    {/* Name and info */}
                     <div className="flex flex-col items-center">
-                        <div className="flex items-center -ml-6"> {/* Negative margin to compensate for logo */}
+                        <div className="flex items-center -ml-6">
                             {teamInfo.teamLogo && (
-                                <div className="w-6 h-6 relative mr-2"> {/* Logo container */}
+                                <div className="w-6 h-6 relative mr-2">
                                     <Image
                                         src={teamInfo.teamLogo}
                                         alt={teamInfo.teamName}
@@ -150,59 +176,10 @@ export default function PlayerCard({
                 </div>
             </div>
 
-            {/* Data tables with fixed sizing */}
+            {/* Data tables */}
             <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-                <div className="p-4">
-                    <h3 className="font-medium text-blue-600 text-sm text-center mb-3 tracking-wider">VS RIGHT HANDED HITTERS</h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
-                                    <th className="pb-2 border-b border-gray-100 text-gray-800 font-medium w-1/4">PITCH</th>
-                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">VELO</th>
-                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">USAGE</th>
-                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">ZONE%</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {vsRight.map((pitch, i) => (
-                                    <tr key={i} className="hover:bg-gray-50">
-                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-sm font-medium w-1/4">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
-                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.velocity_range}</td>
-                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.usage_rate}</td>
-                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.zone_rate}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div className="p-4">
-                    <h3 className="font-medium text-sm text-blue-600 mb-3 text-center tracking-wider">VS LEFT HANDED HITTERS </h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
-                                    <th className="pb-2 border-b border-gray-100 text-gray-800 font-medium w-1/4">PITCH</th>
-                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">VELO</th>
-                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">USAGE</th>
-                                    <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium w-1/4">ZONE%</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {vsLeft.map((pitch, i) => (
-                                    <tr key={i} className="hover:bg-gray-50">
-                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-sm font-medium w-1/4">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
-                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.velocity_range}</td>
-                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.usage_rate}</td>
-                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.zone_rate}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                {renderTable(vsRight, 'VS RIGHT HANDED HITTERS')}
+                {renderTable(vsLeft, 'VS LEFT HANDED HITTERS')}
             </div>
 
             {/* Heatmaps */}
