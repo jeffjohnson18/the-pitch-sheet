@@ -193,10 +193,10 @@ export default function PlayerCard({
                             <tbody>
                                 {vsLeft.map((pitch, i) => (
                                     <tr key={i} className="hover:bg-gray-50">
-                                        <td className="py-2 border-b border-gray-100 text-sm font-medium w-1/4">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
-                                        <td className="py-2 border-b border-gray-100 text-right text-sm font-medium w-1/4">{pitch.velocity_range}</td>
-                                        <td className="py-2 border-b border-gray-100 text-right text-sm font-medium w-1/4">{pitch.usage_rate}</td>
-                                        <td className="py-2 border-b border-gray-100 text-right text-sm font-medium w-1/4">{pitch.zone_rate}</td>
+                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-sm font-medium w-1/4">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
+                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.velocity_range}</td>
+                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.usage_rate}</td>
+                                        <td className="py-2 border-b border-gray-100 text-gray-800 text-right text-sm font-medium w-1/4">{pitch.zone_rate}</td>
                                     </tr>
                                 ))}
                             </tbody>
