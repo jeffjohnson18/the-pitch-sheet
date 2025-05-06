@@ -134,7 +134,7 @@ export default function Page() {
     <div className={`min-h-screen bg-gray-50 p-4 md:p-8 ${inter.className}`}>
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold mb-6 text-center text-gray-800">
-          THE <span className="text-blue-600">PITCH</span> SHEET
+          THE <span className="text-blue-600">MOUND</span> REPORT
         </h1>
 
         <div className="mb-8 max-w-2xl mx-auto">

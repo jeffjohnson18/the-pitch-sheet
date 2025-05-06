@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Pitch Sheet",
-  description: "The Pitch Sheet",
+  title: "The Mound Report",
+  description: "The Mound Report",
 };
 
 export default function RootLayout({
