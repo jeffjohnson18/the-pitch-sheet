@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import data from '@/public/pitchers-5-4-25.json';
 import pitcherIds from '@/public/pitcher_ids.json';
+import { Analytics } from "@vercel/analytics/react"
 import Image from 'next/image';
 import { Inter } from 'next/font/google';
 
