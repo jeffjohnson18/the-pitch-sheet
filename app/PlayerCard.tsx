@@ -101,8 +101,8 @@ export default function PlayerCard({
                             <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Usage</th>
                             <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Zone%</th>
                             <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Spin</th>
-                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">H-Break</th>
-                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">IVB</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Horizontal Break</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Vertical Break</th>
                         </tr>
                     </thead>
                     <tbody>

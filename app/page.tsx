@@ -131,104 +131,148 @@ export default function Page() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [accessToken, setAccessToken] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
 
-  useEffect(() => {
-    // Check for existing token in localStorage
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      setAccessToken(token);
-      fetchFavorites(token);
-    }
-  }, []);
-
-  // Listen for storage events to update token when it changes
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        setAccessToken(token);
-        fetchFavorites(token);
-      } else {
-        setAccessToken('');
-        setFavorites([]);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const fetchFavorites = async (token: string) => {
-    try {
-      console.log('Fetching favorites with token:', token);
-      const response = await fetch('https://moundreport-02d207132db6.herokuapp.com/api/favorites/get_all_favorites/', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Fetched favorites:', data);
-        setFavorites(data.map((fav: any) => fav.pitcher_name));
-      } else {
-        console.error('Failed to fetch favorites:', await response.text());
-      }
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-    }
+  const handleAuth = (token: string, userInfo: { username: string }) => {
+    console.log('=== Setting Auth State ===');
+    console.log('Token:', token);
+    console.log('User Info:', userInfo);
+    setAccessToken(token);
+    setIsAuthenticated(true);
+    setUsername(userInfo.username);
+    fetchFavorites();
   };
 
-  const getPitcherId = (playerName: string) => {
-    console.log('Getting pitcher name for:', playerName);
-    return playerName;
+  const handleLogout = () => {
+    console.log('=== Logging Out ===');
+    setAccessToken('');
+    setIsAuthenticated(false);
+    setUsername('');
+    setFavorites([]);
   };
 
-  const handleFavorite = async (playerName: string) => {
-    // If playerName is empty, it means we're refreshing the favorites list
-    if (!playerName) {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        await fetchFavorites(token);
-      }
+  const fetchFavorites = async () => {
+    if (!accessToken || !username) {
+      console.log('Skipping fetchFavorites:', { accessToken, username });
       return;
     }
 
-    const token = localStorage.getItem('accessToken');
-    console.log('Handling favorite for pitcher:', playerName, 'with token:', token);
+    try {
+      console.log('=== Fetching Favorites ===');
+      console.log('User:', username);
+      console.log('Request URL:', `https://moundreport-02d207132db6.herokuapp.com/api/favorites/my_favorites/?username=${username}`);
+      console.log('Request headers:', {
+        'Authorization': `Bearer ${accessToken}`
+      });
+
+      const response = await fetch(`https://moundreport-02d207132db6.herokuapp.com/api/favorites/my_favorites/?username=${username}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      
+      console.log('=== Response Details ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+      
+      const data = await response.json();
+      console.log('Response Body:', data);
+      
+      if (response.ok) {
+        const newFavorites = data.map((fav: any) => fav.pitcher.player_name);
+        console.log('Processed Favorites:', newFavorites);
+        setFavorites(newFavorites);
+      } else {
+        console.error('=== Error Response ===');
+        console.error('Status:', response.status);
+        console.error('Error Data:', data);
+      }
+    } catch (error) {
+      console.error('=== Fetch Error ===');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleFavorite = async (playerName: string) => {
+    if (!playerName) {
+      console.log('=== Refreshing Favorites ===');
+      fetchFavorites();
+      return;
+    }
+
+    console.log('=== Handling Favorite ===');
+    console.log('Player:', playerName);
     
-    if (!token) {
+    if (!accessToken || !username) {
+      console.log('No token found, requesting login');
       alert('Please login to add favorites');
       return;
     }
 
-    // Only proceed if the player is not already favorited
-    if (!favorites.includes(playerName)) {
-      try {
-        console.log('Adding favorite:', playerName);
-        // Add to favorites
-        const response = await fetch('https://moundreport-02d207132db6.herokuapp.com/api/favorites', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            pitcher_name: playerName
-          })
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Failed to add favorite:', errorData);
-          throw new Error(errorData.detail || 'Failed to add favorite');
-        }
-        
-        console.log('Successfully added favorite');
-        setFavorites([...favorites, playerName]);
-      } catch (error) {
-        console.error('Error updating favorites:', error);
-        alert(error instanceof Error ? error.message : 'Failed to update favorites. Please try again.');
+    try {
+      const isFavorite = favorites.includes(playerName);
+      console.log('Is favorite:', isFavorite);
+      
+      let newFavorites: string[];
+      if (isFavorite) {
+        console.log('Removing from favorites');
+        newFavorites = favorites.filter(name => name !== playerName);
+      } else {
+        console.log('Adding new favorite');
+        newFavorites = [...favorites, playerName];
       }
+
+      console.log('=== Save Favorites Start ===');
+      console.log('Current username:', username);
+      console.log('Favorites to save:', newFavorites);
+
+      const requestBody = {
+        pitcher_names: newFavorites
+      };
+
+      console.log('Making save favorites request...');
+      console.log('Request URL:', `https://moundreport-02d207132db6.herokuapp.com/api/favorites/save_favorites/?username=${username}`);
+      console.log('Request headers:', {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      });
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
+      const response = await fetch(`https://moundreport-02d207132db6.herokuapp.com/api/favorites/save_favorites/?username=${username}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('=== Save Favorites Response ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+
+      const data = await response.json();
+      console.log('Response Body:', data);
+
+      if (!response.ok) {
+        console.error('=== Save Favorites Error ===');
+        console.error('Error Data:', data);
+        throw new Error(data.detail || 'Failed to save favorites');
+      }
+
+      console.log('=== Save Favorites Success ===');
+      console.log('Response:', data);
+      
+      // Fetch updated favorites immediately
+      console.log('Fetching updated favorites...');
+      fetchFavorites();
+    } catch (error) {
+      console.error('=== Favorite Error ===');
+      console.error('Error:', error);
+      alert('Failed to update favorites. Please try again.');
     }
   };
 
@@ -344,6 +388,11 @@ export default function Page() {
         <Sidebar
           onFavorite={handleFavorite}
           favorites={favorites}
+          username={username}
+          accessToken={accessToken}
+          isAuthenticated={isAuthenticated}
+          onAuth={handleAuth}
+          onLogout={handleLogout}
         />
       </div>
     </div>

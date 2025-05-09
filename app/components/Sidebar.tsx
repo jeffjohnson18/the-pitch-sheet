@@ -9,6 +9,11 @@ const inter = Inter({ subsets: ['latin'] });
 interface SidebarProps {
   onFavorite: (playerName: string) => void;
   favorites: string[];
+  username: string;
+  accessToken: string;
+  isAuthenticated: boolean;
+  onAuth: (token: string, userInfo: { username: string }) => void;
+  onLogout: () => void;
 }
 
 interface PitcherData {
@@ -23,51 +28,94 @@ const typedPitcherIds: PitcherIds = Object.fromEntries(
   data.map(p => [p.player_name, p.player_name])
 );
 
-export default function Sidebar({ onFavorite, favorites }: SidebarProps) {
+export default function Sidebar({ 
+  onFavorite, 
+  favorites, 
+  username, 
+  accessToken,
+  isAuthenticated,
+  onAuth,
+  onLogout 
+}: SidebarProps) {
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [accessToken, setAccessToken] = useState('');
+  const [inputUsername, setInputUsername] = useState('');
+  const [sidebarFavorites, setSidebarFavorites] = useState<string[]>([]);
   const router = useRouter();
 
-  useEffect(() => {
-    // Check for existing token in localStorage
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      setAccessToken(token);
-      setIsAuthenticated(true);
-      // Get username from token payload
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.user_id) {
-          setUsername(`User ${payload.user_id}`);
-        }
-      } catch (error) {
-        console.error('Error parsing token:', error);
-      }
+  const fetchFavorites = async () => {
+    if (!accessToken || !username) {
+      console.log('Skipping fetchFavorites in Sidebar:', { accessToken, username });
+      return;
     }
-  }, []);
 
-  // Get unique pitcher data for favorites
-  const favoritePitchers = favorites.map(playerName => ({
-    player_name: playerName
-  }));
+    try {
+      console.log('=== Fetching Favorites in Sidebar ===');
+      console.log('User:', username);
+      console.log('Request URL:', `https://moundreport-02d207132db6.herokuapp.com/api/favorites/my_favorites/?username=${username}`);
+      console.log('Request headers:', {
+        'Authorization': `Bearer ${accessToken}`
+      });
+
+      const response = await fetch(`https://moundreport-02d207132db6.herokuapp.com/api/favorites/my_favorites/?username=${username}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      
+      console.log('=== Response Details in Sidebar ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+      
+      const data = await response.json();
+      console.log('Response Body:', data);
+      
+      if (response.ok) {
+        const newFavorites = data.map((fav: any) => fav.pitcher.player_name);
+        console.log('Processed Favorites in Sidebar:', newFavorites);
+        setSidebarFavorites(newFavorites);
+      } else {
+        console.error('=== Error Response in Sidebar ===');
+        console.error('Status:', response.status);
+        console.error('Error Data:', data);
+      }
+    } catch (error) {
+      console.error('=== Fetch Error in Sidebar ===');
+      console.error('Error:', error);
+    }
+  };
 
   useEffect(() => {
-    console.log('Sidebar favorites updated:', favorites);
-  }, [favorites]);
+    if (isAuthenticated && accessToken && username) {
+      console.log('=== Sidebar Auth State Changed ===');
+      console.log('Fetching favorites for user:', username);
+      fetchFavorites();
+    } else {
+      setSidebarFavorites([]);
+    }
+  }, [isAuthenticated, accessToken, username]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    console.log('=== Authentication Request ===');
+    console.log('Mode:', isLogin ? 'Login' : 'Register');
+    console.log('Username:', inputUsername);
+    if (!isLogin) {
+      console.log('Email:', email);
+    }
+
     const endpoint = isLogin ? '/api/token/' : '/api/users/';
     const payload = isLogin
-      ? { username, password }
-      : { username, email, password };
+      ? { username: inputUsername, password }
+      : { username: inputUsername, email, password };
+
+    console.log('Request URL:', `https://moundreport-02d207132db6.herokuapp.com${endpoint}`);
+    console.log('Request Payload:', { ...payload, password: '***' });
 
     try {
       const response = await fetch(`https://moundreport-02d207132db6.herokuapp.com${endpoint}`, {
@@ -78,38 +126,168 @@ export default function Sidebar({ onFavorite, favorites }: SidebarProps) {
         body: JSON.stringify(payload),
       });
 
+      console.log('=== Response Details ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+
       const data = await response.json();
+      console.log('Response Body:', data);
 
       if (!response.ok) {
+        console.error('=== Authentication Error ===');
+        console.error('Error Data:', data);
         throw new Error(data.detail || 'Authentication failed');
       }
 
       if (isLogin) {
-        localStorage.setItem('accessToken', data.access);
-        localStorage.setItem('refreshToken', data.refresh);
-        setAccessToken(data.access);
-        setIsAuthenticated(true);
-        // Trigger a storage event to notify other components
-        window.dispatchEvent(new Event('storage'));
-        // Fetch favorites immediately after login
+        console.log('=== Login Success ===');
+        console.log('Token received');
+        
+        // Get user info after successful login
+        const userInfoResponse = await fetch('https://moundreport-02d207132db6.herokuapp.com/api/user/info/', {
+          headers: {
+            'Authorization': `Bearer ${data.access}`
+          }
+        });
+
+        if (!userInfoResponse.ok) {
+          throw new Error('Failed to get user info');
+        }
+
+        const userInfo = await userInfoResponse.json();
+        console.log('=== User Info ===');
+        console.log('User Info:', userInfo);
+
+        // Clear existing favorites before setting new token
         onFavorite(''); // This will trigger a refresh of the favorites list
+        onAuth(data.access, userInfo);
       } else {
+        console.log('=== Registration Success ===');
         setIsLogin(true);
       }
     } catch (err) {
+      console.error('=== Authentication Error ===');
+      console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    setAccessToken('');
-    setIsAuthenticated(false);
-    setUsername('');
-    setPassword('');
-    // Trigger a storage event to notify other components
-    window.dispatchEvent(new Event('storage'));
+  const handleClearAll = async () => {
+    console.log('=== Clearing All Favorites ===');
+    if (!accessToken || !username) {
+      console.log('No token found, requesting login');
+      alert('Please login to manage favorites');
+      return;
+    }
+
+    try {
+      const requestBody = {
+        pitcher_names: []
+      };
+
+      console.log('Making save favorites request...');
+      console.log('Request URL:', `https://moundreport-02d207132db6.herokuapp.com/api/favorites/save_favorites/?username=${username}`);
+      console.log('Request headers:', {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      });
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
+      const response = await fetch(`https://moundreport-02d207132db6.herokuapp.com/api/favorites/save_favorites/?username=${username}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('=== Response Details ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('=== Clear All Error ===');
+        console.error('Error Data:', errorData);
+        throw new Error(errorData.detail || 'Failed to clear favorites');
+      }
+
+      const data = await response.json();
+      console.log('=== Clear All Success ===');
+      console.log('Response:', data);
+      
+      // Clear the favorites list and refresh immediately
+      setSidebarFavorites([]);
+      await fetchFavorites();
+    } catch (error) {
+      console.error('=== Clear All Error ===');
+      console.error('Error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to clear favorites. Please try again.');
+    }
+  };
+
+  // Add a useEffect to refresh favorites when they change
+  useEffect(() => {
+    if (isAuthenticated && accessToken && username) {
+      fetchFavorites();
+    }
+  }, [favorites]); // This will trigger when favorites change in the parent component
+
+  const handleLogout = async () => {
+    console.log('=== Starting Logout Process ===');
+    console.log('Current state:', {
+      isAuthenticated,
+      username,
+      accessToken: accessToken ? 'Token exists' : 'No token',
+      favoritesCount: favorites.length
+    });
+
+    // Save current favorites before logout
+    if (accessToken && favorites.length > 0) {
+      try {
+        console.log('=== Saving Favorites Before Logout ===');
+        console.log('Favorites to save:', favorites);
+        console.log('Request URL:', `https://moundreport-02d207132db6.herokuapp.com/api/favorites/save_favorites/?username=${username}`);
+        console.log('Request headers:', {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        });
+
+        const response = await fetch(`https://moundreport-02d207132db6.herokuapp.com/api/favorites/save_favorites/?username=${username}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            pitcher_names: favorites
+          })
+        });
+
+        console.log('=== Save Response ===');
+        console.log('Status:', response.status);
+        console.log('Status Text:', response.statusText);
+        console.log('Headers:', Object.fromEntries(response.headers.entries()));
+
+        if (!response.ok) {
+          console.error('Failed to save favorites before logout');
+          const errorData = await response.json();
+          console.error('Error Data:', errorData);
+        } else {
+          const data = await response.json();
+          console.log('Successfully saved favorites before logout');
+          console.log('Response:', data);
+        }
+      } catch (error) {
+        console.error('=== Save Error During Logout ===');
+        console.error('Error:', error);
+      }
+    }
+
+    onLogout();
   };
 
   const formatPlayerName = (name: string) =>
@@ -119,34 +297,6 @@ export default function Sidebar({ onFavorite, favorites }: SidebarProps) {
     const element = document.querySelector(`[data-player="${playerName}"]`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
-
-  const handleClearAll = async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      alert('Please login to manage favorites');
-      return;
-    }
-
-    try {
-      const response = await fetch('https://moundreport-02d207132db6.herokuapp.com/api/favorites/clear_all/', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to clear favorites');
-      }
-
-      // Clear the favorites list
-      onFavorite(''); // This will trigger a refresh of the favorites list
-    } catch (error) {
-      console.error('Error clearing favorites:', error);
-      alert(error instanceof Error ? error.message : 'Failed to clear favorites. Please try again.');
     }
   };
 
@@ -165,8 +315,8 @@ export default function Sidebar({ onFavorite, favorites }: SidebarProps) {
                 </label>
                 <input
                   type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  value={inputUsername}
+                  onChange={(e) => setInputUsername(e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800"
                   required
                 />
@@ -230,7 +380,7 @@ export default function Sidebar({ onFavorite, favorites }: SidebarProps) {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">Favorites</h3>
-                {favoritePitchers.length > 0 && (
+                {sidebarFavorites.length > 0 && (
                   <button
                     onClick={handleClearAll}
                     className="text-sm text-red-600 hover:text-red-800 transition-colors duration-200"
@@ -240,20 +390,20 @@ export default function Sidebar({ onFavorite, favorites }: SidebarProps) {
                 )}
               </div>
               <div className="space-y-2">
-                {favoritePitchers.map((pitcher) => (
+                {sidebarFavorites.map((pitcher) => (
                   <div
-                    key={pitcher.player_name}
+                    key={pitcher}
                     className="flex items-center p-2 hover:bg-gray-100 rounded transition-colors duration-200"
                   >
                     <button
-                      onClick={() => scrollToPlayer(pitcher.player_name)}
+                      onClick={() => scrollToPlayer(pitcher)}
                       className="text-gray-800 hover:text-blue-600 transition-colors duration-200 text-left flex-grow"
                     >
-                      {formatPlayerName(pitcher.player_name)}
+                      {formatPlayerName(pitcher)}
                     </button>
                   </div>
                 ))}
-                {favoritePitchers.length === 0 && (
+                {sidebarFavorites.length === 0 && (
                   <p className="text-gray-500 text-sm">No favorites yet</p>
                 )}
               </div>
