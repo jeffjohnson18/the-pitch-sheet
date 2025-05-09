@@ -7,8 +7,35 @@ import pitcherIds from '@/public/pitcher_ids.json';
 import { Analytics } from "@vercel/analytics/react"
 import Image from 'next/image';
 import { Inter } from 'next/font/google';
+import Sidebar from './components/Sidebar';
 
 const inter = Inter({ subsets: ['latin'] });
+
+interface PitcherData {
+  id: number;
+  player_name: string;
+  player_image: string;
+  team_name: string;
+  team_logo: string;
+  stand_side: string;
+  pitch_type: string;
+  velocity_range: string;
+  usage_rate: string;
+  zone_rate: string;
+  avg_spin_rate: number;
+  avg_horz_break: number;
+  avg_induced_vert_break: number;
+  heatmap_path: string;
+}
+
+interface PitcherIds {
+  [key: string]: string;
+}
+
+const typedPitcherIds: PitcherIds = Object.fromEntries(
+  data.map(p => [p.player_name, p.player_name])
+);
+
 const PlayerCard = dynamic(() => import('./PlayerCard'), {
   ssr: false,
   loading: () => (
@@ -100,7 +127,154 @@ export default function Page() {
   const [search, setSearch] = useState('');
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [showTeams, setShowTeams] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(50); // Initial visible player limit
+  const [visibleCount, setVisibleCount] = useState(50);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [accessToken, setAccessToken] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
+
+  const handleAuth = (token: string, userInfo: { username: string }) => {
+    console.log('=== Setting Auth State ===');
+    console.log('Token:', token);
+    console.log('User Info:', userInfo);
+    setAccessToken(token);
+    setIsAuthenticated(true);
+    setUsername(userInfo.username);
+    fetchFavorites();
+  };
+
+  const handleLogout = () => {
+    console.log('=== Logging Out ===');
+    setAccessToken('');
+    setIsAuthenticated(false);
+    setUsername('');
+    setFavorites([]);
+  };
+
+  const fetchFavorites = async () => {
+    if (!accessToken || !username) {
+      console.log('Skipping fetchFavorites:', { accessToken, username });
+      return;
+    }
+
+    try {
+      console.log('=== Fetching Favorites ===');
+      console.log('User:', username);
+      console.log('Request URL:', `https://moundreport-02d207132db6.herokuapp.com/api/favorites/my_favorites/?username=${username}`);
+      console.log('Request headers:', {
+        'Authorization': `Bearer ${accessToken}`
+      });
+
+      const response = await fetch(`https://moundreport-02d207132db6.herokuapp.com/api/favorites/my_favorites/?username=${username}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      
+      console.log('=== Response Details ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+      
+      const data = await response.json();
+      console.log('Response Body:', data);
+      
+      if (response.ok) {
+        const newFavorites = data.map((fav: any) => fav.pitcher.player_name);
+        console.log('Processed Favorites:', newFavorites);
+        setFavorites(newFavorites);
+      } else {
+        console.error('=== Error Response ===');
+        console.error('Status:', response.status);
+        console.error('Error Data:', data);
+      }
+    } catch (error) {
+      console.error('=== Fetch Error ===');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleFavorite = async (playerName: string) => {
+    if (!playerName) {
+      console.log('=== Refreshing Favorites ===');
+      fetchFavorites();
+      return;
+    }
+
+    console.log('=== Handling Favorite ===');
+    console.log('Player:', playerName);
+    
+    if (!accessToken || !username) {
+      console.log('No token found, requesting login');
+      alert('Please login to add favorites');
+      return;
+    }
+
+    try {
+      const isFavorite = favorites.includes(playerName);
+      console.log('Is favorite:', isFavorite);
+      
+      let newFavorites: string[];
+      if (isFavorite) {
+        console.log('Removing from favorites');
+        newFavorites = favorites.filter(name => name !== playerName);
+      } else {
+        console.log('Adding new favorite');
+        newFavorites = [...favorites, playerName];
+      }
+
+      console.log('=== Save Favorites Start ===');
+      console.log('Current username:', username);
+      console.log('Favorites to save:', newFavorites);
+
+      const requestBody = {
+        pitcher_names: newFavorites
+      };
+
+      console.log('Making save favorites request...');
+      console.log('Request URL:', `https://moundreport-02d207132db6.herokuapp.com/api/favorites/save_favorites/?username=${username}`);
+      console.log('Request headers:', {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      });
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
+      const response = await fetch(`https://moundreport-02d207132db6.herokuapp.com/api/favorites/save_favorites/?username=${username}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('=== Save Favorites Response ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+
+      const data = await response.json();
+      console.log('Response Body:', data);
+
+      if (!response.ok) {
+        console.error('=== Save Favorites Error ===');
+        console.error('Error Data:', data);
+        throw new Error(data.detail || 'Failed to save favorites');
+      }
+
+      console.log('=== Save Favorites Success ===');
+      console.log('Response:', data);
+      
+      // Fetch updated favorites immediately
+      console.log('Fetching updated favorites...');
+      fetchFavorites();
+    } catch (error) {
+      console.error('=== Favorite Error ===');
+      console.error('Error:', error);
+      alert('Failed to update favorites. Please try again.');
+    }
+  };
 
   const pitchNameMap = useMemo(() => ({
     FF: 'Four-Seam Fastball', SL: 'Slider', CH: 'Changeup', CU: 'Curveball',
@@ -133,24 +307,28 @@ export default function Page() {
 
   return (
     <div className={`min-h-screen bg-gray-50 p-4 md:p-8 ${inter.className}`}>
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-6 text-center text-gray-800">
-          THE <span className="text-blue-600">MOUND</span> REPORT
-        </h1>
+      <div className="max-w-7xl mx-auto pr-80">
+        <div className="flex flex-col items-center">
+          <div className="flex justify-center items-center mb-6 w-full">
+            <h1 className="text-4xl font-bold text-gray-800">
+              THE <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">MOUND</span> REPORT
+            </h1>
+          </div>
 
-        <div className="mb-8 max-w-2xl mx-auto">
-          <input
-            type="text"
-            placeholder="Search for a pitcher..."
-            className="w-full p-3 rounded-lg border border-gray-300 shadow-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="mb-8 max-w-2xl w-full">
+            <input
+              type="text"
+              placeholder="Search for a pitcher..."
+              className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800 placeholder:text-transparent placeholder:bg-clip-text placeholder:bg-gradient-to-r placeholder:from-blue-600 placeholder:to-purple-600"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="text-center mb-6">
           <button
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md"
+            className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800 font-medium hover:opacity-80 transition-opacity"
             onClick={() => setShowTeams(!showTeams)}
           >
             {showTeams ? 'Hide Team Filter' : 'Filter by Team'}
@@ -173,17 +351,25 @@ export default function Page() {
           </div>
         ) : (
           <>
-            <div className="space-y-8">
+            <div className="space-y-8 max-w-4xl mx-auto">
               {visiblePlayers.map(player => (
-                <PlayerCard
-                  key={player}
-                  player={player}
-                  data={filteredData.filter(p => p.player_name === player)}
-                  pitchNameMap={pitchNameMap}
-                  formatPlayerName={formatPlayerName}
-                  getThrowHand={getThrowHand}
-                  getArmAngle={getArmAngle}
-                />
+                <div key={player} className="relative" data-player={player}>
+                  <button
+                    onClick={() => handleFavorite(player)}
+                    className="absolute top-4 left-4 z-10 text-2xl hover:text-blue-600 transition-colors duration-200"
+                    title={favorites.includes(player) ? "Remove from favorites" : "Add to favorites"}
+                  >
+                    {favorites.includes(player) ? '★' : '☆'}
+                  </button>
+                  <PlayerCard
+                    player={player}
+                    data={filteredData.filter(p => p.player_name === player)}
+                    pitchNameMap={pitchNameMap}
+                    formatPlayerName={formatPlayerName}
+                    getThrowHand={getThrowHand}
+                    getArmAngle={getArmAngle}
+                  />
+                </div>
               ))}
             </div>
             {visibleCount < uniquePlayers.length && (
@@ -198,6 +384,16 @@ export default function Page() {
             )}
           </>
         )}
+
+        <Sidebar
+          onFavorite={handleFavorite}
+          favorites={favorites}
+          username={username}
+          accessToken={accessToken}
+          isAuthenticated={isAuthenticated}
+          onAuth={handleAuth}
+          onLogout={handleLogout}
+        />
       </div>
     </div>
   );

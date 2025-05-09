@@ -91,30 +91,30 @@ export default function PlayerCard({
 
     const renderTable = (pitches: any[], label: string) => (
         <div className="p-4">
-            <h3 className="font-medium text-sm text-blue-600 mb-3 text-center tracking-wider">{label}</h3>
+            <h3 className="font-medium text-xs text-blue-600 mb-3 text-center tracking-wider">{label}</h3>
             <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[600px]">
                     <thead>
-                        <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
+                        <tr className="text-left text-[10px] text-gray-500 uppercase tracking-wider">
                             <th className="pb-2 border-b border-gray-100 text-gray-800 font-medium">Pitch</th>
                             <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Velo</th>
                             <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Usage</th>
                             <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Zone%</th>
                             <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Spin</th>
-                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">H-Break</th>
-                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">IVB</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Horizontal Break</th>
+                            <th className="pb-2 border-b border-gray-100 text-gray-800 text-right font-medium">Vertical Break</th>
                         </tr>
                     </thead>
                     <tbody>
                         {pitches.map((pitch, i) => (
                             <tr key={i} className="hover:bg-gray-50">
-                                <td className="py-2 border-b border-gray-100 text-sm font-medium">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
-                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.velocity_range}</td>
-                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.usage_rate}</td>
-                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.zone_rate}</td>
-                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.avg_spin_rate}</td>
-                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.avg_horz_break}</td>
-                                <td className="py-2 border-b border-gray-100 text-sm text-right">{pitch.avg_induced_vert_break}</td>
+                                <td className="py-2 border-b border-gray-100 text-xs font-medium text-gray-800">{pitchNameMap[pitch.pitch_type] || pitch.pitch_type}</td>
+                                <td className="py-2 border-b border-gray-100 text-xs text-right text-gray-800">{pitch.velocity_range}</td>
+                                <td className="py-2 border-b border-gray-100 text-xs text-right text-gray-800">{pitch.usage_rate}</td>
+                                <td className="py-2 border-b border-gray-100 text-xs text-right text-gray-800">{pitch.zone_rate}</td>
+                                <td className="py-2 border-b border-gray-100 text-xs text-right text-gray-800">{pitch.avg_spin_rate}</td>
+                                <td className="py-2 border-b border-gray-100 text-xs text-right text-gray-800">{pitch.avg_horz_break}</td>
+                                <td className="py-2 border-b border-gray-100 text-xs text-right text-gray-800">{pitch.avg_induced_vert_break}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -124,17 +124,17 @@ export default function PlayerCard({
     );
 
     return (
-        <div className={`bg-white rounded-xl shadow overflow-hidden ${inter.className}`}>
+        <div className={`bg-white rounded-xl shadow overflow-hidden max-w-5xl mx-auto ${inter.className}`}>
             {/* Header */}
-            <div className="p-4 text-white" style={{ background: `linear-gradient(135deg, ${teamColors.primary} 0%, ${teamColors.secondary} 100%)` }}>
+            <div className="p-6 text-white" style={{ background: `linear-gradient(135deg, ${teamColors.primary} 0%, ${teamColors.secondary} 100%)` }}>
                 <div className="flex items-center justify-center">
                     {playerData?.image && (
-                        <div className="w-16 h-16 relative rounded-full overflow-hidden mr-3">
+                        <div className="w-20 h-20 relative rounded-full overflow-hidden mr-4">
                             <Image
                                 src={playerData.image}
                                 alt={formatPlayerName(player)}
-                                width={64}
-                                height={64}
+                                width={80}
+                                height={80}
                                 className="object-scale-down"
                                 style={{
                                     position: 'absolute',
@@ -152,23 +152,23 @@ export default function PlayerCard({
                     <div className="flex flex-col items-center">
                         <div className="flex items-center -ml-6">
                             {teamInfo.teamLogo && (
-                                <div className="w-6 h-6 relative mr-2">
+                                <div className="w-8 h-8 relative mr-3">
                                     <Image
                                         src={teamInfo.teamLogo}
                                         alt={teamInfo.teamName}
-                                        width={18}
-                                        height={18}
+                                        width={24}
+                                        height={24}
                                         className="object-contain"
                                     />
                                 </div>
                             )}
-                            <h2 className="text-xl font-medium">
+                            <h2 className="text-2xl font-medium">
                                 {formatPlayerName(player)}
                             </h2>
                         </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                            <span>{teamInfo.teamName}</span>
-                            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                        <div className="flex items-center space-x-3 mt-2">
+                            <span className="text-sm">{teamInfo.teamName}</span>
+                            <span className="text-xs bg-white/20 px-3 py-1 rounded-full">
                                 {throwHand}HP • {armAngle}° slot
                             </span>
                         </div>
@@ -177,43 +177,43 @@ export default function PlayerCard({
             </div>
 
             {/* Data tables */}
-            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+            <div className="divide-y divide-gray-100">
                 {renderTable(vsRight, 'VS RIGHT HANDED HITTERS')}
                 {renderTable(vsLeft, 'VS LEFT HANDED HITTERS')}
             </div>
 
             {/* Heatmaps */}
-            <div className="p-4 justify-center">
-                <h3 className="font-medium text-sm text-center text-blue-600 mb-3 tracking-wider">LOCATION HEATMAPS</h3>
-                <div className="flex overflow-x-auto space-x-6 pb-2">
+            <div className="p-6">
+                <h3 className="font-medium text-xs text-center text-blue-600 mb-4 tracking-wider">LOCATION HEATMAPS</h3>
+                <div className="flex overflow-x-auto space-x-8 pb-4">
                     {vsRight.map((pitch, i) => (
                         <div key={i} className="flex flex-col items-center flex-shrink-0">
-                            <h4 className="text-sm font-medium mb-2">
+                            <h4 className="text-xs font-medium mb-2">
                                 {pitchNameMap[pitch.pitch_type] || pitch.pitch_type}
                             </h4>
-                            <div className="flex space-x-4">
+                            <div className="flex space-x-6">
                                 <div className="text-center">
-                                    <p className="text-xs text-gray-500 mb-1">VS R</p>
+                                    <p className="text-[10px] text-gray-500 mb-1">VS R</p>
                                     {playerData?.heatMaps[pitch.pitch_type]?.R ? (
                                         <HeatmapImage
                                             src={playerData.heatMaps[pitch.pitch_type].R}
                                             alt={`${pitch.pitch_type} vs R`}
                                         />
                                     ) : (
-                                        <div className="w-32 h-40 bg-gray-100 flex items-center justify-center">
+                                        <div className="w-32 h-40 bg-gray-100 flex items-center justify-center text-xs">
                                             No pitching data
                                         </div>
                                     )}
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-xs text-gray-500 mb-1">VS L</p>
+                                    <p className="text-[10px] text-gray-500 mb-1">VS L</p>
                                     {playerData?.heatMaps[pitch.pitch_type]?.L ? (
                                         <HeatmapImage
                                             src={playerData.heatMaps[pitch.pitch_type].L}
                                             alt={`${pitch.pitch_type} vs L`}
                                         />
                                     ) : (
-                                        <div className="w-32 h-40 bg-gray-100 flex items-center justify-center">
+                                        <div className="w-32 h-40 bg-gray-100 flex items-center justify-center text-xs">
                                             No data
                                         </div>
                                     )}
