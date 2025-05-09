@@ -43,6 +43,7 @@ export default function Sidebar({
   const [error, setError] = useState('');
   const [inputUsername, setInputUsername] = useState('');
   const [sidebarFavorites, setSidebarFavorites] = useState<string[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const router = useRouter();
 
   const fetchFavorites = async () => {
@@ -301,116 +302,151 @@ export default function Sidebar({
   };
 
   return (
-    <div className={`fixed top-0 right-0 h-full w-80 bg-gray-50 shadow-lg ${inter.className}`}>
-      <div className="p-6 h-full overflow-y-auto">
-        {!isAuthenticated ? (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">
-              {isLogin ? 'Login' : 'Register'}
-            </h2>
-            <form onSubmit={handleAuth} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-800">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={inputUsername}
-                  onChange={(e) => setInputUsername(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800"
-                  required
-                />
-              </div>
-              {!isLogin && (
+    <>
+      {/* Mobile Toggle Button */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="fixed top-4 right-4 z-50 md:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-lg shadow-lg"
+        aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        {isSidebarOpen ? (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        )}
+      </button>
+
+      {/* Overlay for mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div 
+        className={`fixed top-0 right-0 h-full w-80 bg-gray-50 shadow-lg transform transition-transform duration-300 ease-in-out z-50
+          ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'} 
+          ${inter.className}`}
+      >
+        <div className="p-6 h-full overflow-y-auto">
+          {!isAuthenticated ? (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">
+                {isLogin ? 'Login' : 'Register'}
+              </h2>
+              <form onSubmit={handleAuth} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-800">
-                    Email
+                    Username
                   </label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text"
+                    value={inputUsername}
+                    onChange={(e) => setInputUsername(e.target.value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800"
                     required
                   />
                 </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-800">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800"
-                  required
-                />
-              </div>
-              {error && (
-                <div className="text-red-500 text-sm">{error}</div>
-              )}
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
-              >
-                {isLogin ? 'Login' : 'Register'}
-              </button>
-            </form>
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="w-full text-center text-blue-600 hover:text-blue-800 transition-colors duration-200"
-            >
-              {isLogin ? 'Need an account? Register' : 'Already have an account? Login'}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">
-                {username}
-              </h2>
-              <button
-                onClick={handleLogout}
-                className="text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white py-1 px-3 rounded-md hover:opacity-90 transition-opacity"
-              >
-                Logout
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">Favorites</h3>
-                {sidebarFavorites.length > 0 && (
-                  <button
-                    onClick={handleClearAll}
-                    className="text-sm text-red-600 hover:text-red-800 transition-colors duration-200"
-                  >
-                    Clear All
-                  </button>
-                )}
-              </div>
-              <div className="space-y-2">
-                {sidebarFavorites.map((pitcher) => (
-                  <div
-                    key={pitcher}
-                    className="flex items-center p-2 hover:bg-gray-100 rounded transition-colors duration-200"
-                  >
-                    <button
-                      onClick={() => scrollToPlayer(pitcher)}
-                      className="text-gray-800 hover:text-blue-600 transition-colors duration-200 text-left flex-grow"
-                    >
-                      {formatPlayerName(pitcher)}
-                    </button>
+                {!isLogin && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800"
+                      required
+                    />
                   </div>
-                ))}
-                {sidebarFavorites.length === 0 && (
-                  <p className="text-gray-500 text-sm">No favorites yet</p>
                 )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-800">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800"
+                    required
+                  />
+                </div>
+                {error && (
+                  <div className="text-red-500 text-sm">{error}</div>
+                )}
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
+                >
+                  {isLogin ? 'Login' : 'Register'}
+                </button>
+              </form>
+              <button
+                onClick={() => setIsLogin(!isLogin)}
+                className="w-full text-center text-blue-600 hover:text-blue-800 transition-colors duration-200"
+              >
+                {isLogin ? 'Need an account? Register' : 'Already have an account? Login'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">
+                  {username}
+                </h2>
+                <button
+                  onClick={handleLogout}
+                  className="text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white py-1 px-3 rounded-md hover:opacity-90 transition-opacity"
+                >
+                  Logout
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">Favorites</h3>
+                  {sidebarFavorites.length > 0 && (
+                    <button
+                      onClick={handleClearAll}
+                      className="text-sm text-red-600 hover:text-red-800 transition-colors duration-200"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {sidebarFavorites.map((pitcher) => (
+                    <div
+                      key={pitcher}
+                      className="flex items-center p-2 hover:bg-gray-100 rounded transition-colors duration-200"
+                    >
+                      <button
+                        onClick={() => {
+                          scrollToPlayer(pitcher);
+                          setIsSidebarOpen(false); // Close sidebar on mobile after clicking
+                        }}
+                        className="text-gray-800 hover:text-blue-600 transition-colors duration-200 text-left flex-grow"
+                      >
+                        {formatPlayerName(pitcher)}
+                      </button>
+                    </div>
+                  ))}
+                  {sidebarFavorites.length === 0 && (
+                    <p className="text-gray-500 text-sm">No favorites yet</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 } 
