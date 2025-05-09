@@ -307,15 +307,15 @@ export default function Page() {
 
   return (
     <div className={`min-h-screen bg-gray-50 p-4 md:p-8 ${inter.className}`}>
-      <div className="max-w-7xl mx-auto pr-80">
+      <div className="max-w-7xl mx-auto md:pr-80">
         <div className="flex flex-col items-center">
           <div className="flex justify-center items-center mb-6 w-full">
-            <h1 className="text-4xl font-bold text-gray-800">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 text-center">
               THE <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">MOUND</span> REPORT
             </h1>
           </div>
 
-          <div className="mb-8 max-w-2xl w-full">
+          <div className="mb-8 w-full max-w-2xl px-4 md:px-0">
             <input
               type="text"
               placeholder="Search for a pitcher..."
@@ -336,7 +336,7 @@ export default function Page() {
         </div>
 
         {showTeams && (
-          <div className="bg-white p-6 rounded-xl shadow-md mb-8">
+          <div className="bg-white p-4 md:p-6 rounded-xl shadow-md mb-8 mx-4 md:mx-0">
             <TeamFilterSection
               teams={uniqueTeams}
               selectedTeams={selectedTeams}
@@ -351,7 +351,7 @@ export default function Page() {
           </div>
         ) : (
           <>
-            <div className="space-y-8 max-w-4xl mx-auto">
+            <div className="space-y-8 max-w-4xl mx-auto px-4 md:px-0">
               {visiblePlayers.map(player => (
                 <div key={player} className="relative" data-player={player}>
                   <button
