@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import data from '@/public/pitchers-5-4-25.json';
+import data from '@/public/pitchers-8-23-25.json';
 import pitcherIds from '@/public/pitcher_ids.json';
 
 interface TeamInfo {

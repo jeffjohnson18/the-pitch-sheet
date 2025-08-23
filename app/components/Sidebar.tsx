@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Inter } from 'next/font/google';
-import data from '@/public/pitchers-5-4-25.json';
-import pitcherIds from '@/public/pitcher_ids.json';
+import data from '@/public/pitchers-8-23-25.json';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -25,7 +24,12 @@ interface PitcherIds {
 }
 
 const typedPitcherIds: PitcherIds = Object.fromEntries(
-  data.map(p => [p.player_name, p.player_name])
+  data.map(p => {
+    // Extract ID from URL like: "https://img.mlbstatic.com/mlb-photos/image/upload/w_300,q_100/v1/people/579328/headshot/current"
+    const match = p.player_image?.match(/\/people\/(\d+)\//);
+    const playerId = match ? match[1] : p.player_name; // fallback to player name if no ID found
+    return [p.player_name, playerId];
+  })
 );
 
 export default function Sidebar({ 
@@ -306,7 +310,7 @@ export default function Sidebar({
       {/* Mobile Toggle Button */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="fixed top-4 right-4 z-50 md:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-lg shadow-lg"
+        className="fixed top-20 right-4 z-40 md:hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-lg shadow-lg"
         aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
       >
         {isSidebarOpen ? (
@@ -323,14 +327,14 @@ export default function Sidebar({
       {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div 
-        className={`fixed top-0 right-0 h-full w-80 bg-gray-50 shadow-lg transform transition-transform duration-300 ease-in-out z-50
+        className={`fixed top-16 right-0 h-full w-80 bg-gray-50 shadow-lg transform transition-transform duration-300 ease-in-out z-40
           ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'} 
           ${inter.className}`}
       >
