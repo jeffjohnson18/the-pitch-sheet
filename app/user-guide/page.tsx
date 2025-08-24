@@ -25,7 +25,7 @@ export default function UserGuidePage() {
             <div className="space-y-4 text-gray-600">
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">1. Access the App</h3>
-                <p>Click "The Mound Report" in the navigation or use the "Proceed to The Mound Report" button on the home page.</p>
+                <p>Click "The Mound Report" in the navigation bar.</p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">2. Search for Pitchers</h3>
@@ -33,9 +33,16 @@ export default function UserGuidePage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">3. Filter by Team</h3>
-                <p>Click "Filter by Team" to show team selection options. Choose from MLB divisions or individual teams to narrow your search.</p>
+                <p className="mb-4">Click "Filter by Team" to show team selection options. Choose from MLB divisions or individual teams to narrow your search.</p>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">4. Create an Account (Optional)</h3>
+                <p>Click "Create an Account" to save your favorite pitchers.</p>
+              </div>
               </div>
             </div>
+            <div className="bg-purple-50 p-4 rounded-lg mt-4">
+                <p className="text-purple-800"><strong>Note: </strong>To ensure a player's current team is accurate, we pull it continuously. If a player is currently in the minor leagues for a rehab assignment or they were optioned to the minor leagues, they will be listed on a minor league team.</p>
+              </div>
           </section>
 
           {/* Navigation Section */}
@@ -43,15 +50,11 @@ export default function UserGuidePage() {
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Navigating the Interface</h2>
             <div className="space-y-4 text-gray-600">
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Pitcher Cards</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Pitcher Cards</h3>
                 <p>Each pitcher is displayed in a card format showing their basic information, team, and available pitch types.</p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Favorites System</h3>
-                <p>Click the star icon (☆) on any pitcher card to add them to your favorites. Filled stars (★) indicate saved favorites.</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Load More</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Load More</h3>
                 <p>Use the "Load More Pitchers" button at the bottom to display additional results beyond the initial 50 pitchers.</p>
               </div>
             </div>
@@ -83,10 +86,6 @@ export default function UserGuidePage() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Efficient Searching</h3>
                 <p>Start with broad team filters, then narrow down with specific names for the most efficient pitcher discovery.</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Favorites Management</h3>
-                <p>Create a curated list of pitchers you're tracking regularly for quick access during games or analysis sessions.</p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Data Interpretation</h3>

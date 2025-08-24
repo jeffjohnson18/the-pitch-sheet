@@ -137,12 +137,15 @@ export default function AppPage() {
   const [showTeams, setShowTeams] = useState(false);
   const [visibleCount, setVisibleCount] = useState(50);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [accessToken, setAccessToken] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [username, setUsername] = useState('');
+  // Authentication and favorites state - commented out
+  // const [favorites, setFavorites] = useState<string[]>([]);
+  // const [accessToken, setAccessToken] = useState('');
+  // const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // const [username, setUsername] = useState('');
   const [showNewUserAlert, setShowNewUserAlert] = useState(true);
 
+  // Authentication functions - commented out
+  /*
   const handleAuth = (token: string, userInfo: { username: string }) => {
     console.log('=== Setting Auth State ===');
     console.log('Token:', token);
@@ -284,6 +287,7 @@ export default function AppPage() {
       alert('Failed to update favorites. Please try again.');
     }
   };
+  */
 
   const pitchNameMap = useMemo(() => ({
     FF: 'Four-Seam Fastball', SL: 'Slider', CH: 'Changeup', CU: 'Curveball',
@@ -318,19 +322,15 @@ export default function AppPage() {
     <div className={`min-h-screen bg-gray-50 ${inter.className}`}>
       <Navbar />
       <div className="pt-20 p-4 md:p-8">
-        <div className="max-w-7xl mx-auto md:pr-80">
+        <div className="max-w-7xl mx-auto">
           <div className="flex flex-col items-center">
-            <div className="flex justify-center items-center mb-6 w-full">
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-800 text-center">
-                THE <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">MOUND</span> REPORT
-              </h1>
-            </div>
+            
 
-            <div className="mb-8 w-full max-w-2xl px-4 md:px-0">
+            <div className="mt-10 mb-8 w-full max-w-2xl px-4 md:px-0">
               <input
                 type="text"
                 placeholder="Search for a pitcher..."
-                className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800 placeholder:text-transparent placeholder:bg-clip-text placeholder:bg-gradient-to-r placeholder:from-blue-600 placeholder:to-purple-600"
+                className="mt-10 w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-800 placeholder:text-transparent placeholder:bg-clip-text placeholder:bg-gradient-to-r placeholder:from-blue-600 placeholder:to-purple-600"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -365,6 +365,7 @@ export default function AppPage() {
               <div className="space-y-8 max-w-4xl mx-auto px-4 md:px-0">
                 {visiblePlayers.map(player => (
                   <div key={player} className="relative" data-player={player}>
+                    {/* Favorite button - Commented out
                     <button
                       onClick={() => handleFavorite(player)}
                       className="absolute top-4 left-4 z-10 text-2xl hover:text-blue-600 transition-colors duration-200"
@@ -372,6 +373,7 @@ export default function AppPage() {
                     >
                       {favorites.includes(player) ? '★' : '☆'}
                     </button>
+                    */}
                     <PlayerCard
                       player={player}
                       data={filteredData.filter(p => p.player_name === player)}
@@ -396,6 +398,7 @@ export default function AppPage() {
             </>
           )}
 
+          {/* Sidebar - Commented out login/favorites functionality
           <Sidebar
             onFavorite={handleFavorite}
             favorites={favorites}
@@ -405,6 +408,7 @@ export default function AppPage() {
             onAuth={handleAuth}
             onLogout={handleLogout}
           />
+          */}
         </div>
       </div>
 
