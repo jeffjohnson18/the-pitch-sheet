@@ -38,7 +38,6 @@ export default function LandingPage() {
                 <li>Search for pitchers by name</li>
                 <li>Filter by team or division</li>
                 <li>View detailed analytics and heatmaps</li>
-                <li>Save your favorite pitchers</li>
               </ol>
             </div>
             <div>
